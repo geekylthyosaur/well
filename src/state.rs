@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use smithay::{
+    desktop::{Space, Window},
     input::{Seat, SeatState},
     reexports::wayland_server::{
         backend::{ClientData, ClientId, DisconnectReason},
@@ -20,6 +21,8 @@ pub struct State {
     pub is_running: bool,
     pub start_time: Instant,
 
+    pub space: Space<Window>,
+
     pub compositor_state: CompositorState,
     pub xdg_shell_state: XdgShellState,
     pub shm_state: ShmState,
@@ -34,6 +37,8 @@ impl State {
         let is_running = true;
         let start_time = Instant::now();
 
+        let space = Space::default();
+
         let compositor_state = CompositorState::new::<State>(dh);
         let xdg_shell_state = XdgShellState::new::<State>(dh);
         let shm_state = ShmState::new::<State>(dh, vec![]);
@@ -47,6 +52,8 @@ impl State {
         Self {
             is_running,
             start_time,
+
+            space,
 
             compositor_state,
             xdg_shell_state,

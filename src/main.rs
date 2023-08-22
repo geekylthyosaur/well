@@ -2,7 +2,6 @@ use std::{os::fd::AsRawFd, str::FromStr, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use smithay::{
-    backend::{renderer::gles::GlesRenderer, winit},
     reexports::{
         calloop::{
             generic::Generic,
@@ -17,12 +16,13 @@ use tracing::{error, info, warn};
 use tracing_subscriber::{filter::Directive, prelude::*, EnvFilter};
 
 use crate::{
-    backend::backend_dispatch,
+    backend::WinitBackend,
     state::{CalloopData, ClientState, State},
 };
 
 mod backend;
 mod handlers;
+mod input;
 mod state;
 
 const PKG_NAME: &str = env!("CARGO_PKG_NAME");
@@ -51,21 +51,8 @@ fn main() -> Result<()> {
 
     let display = Display::new()?;
 
-    let (mut backend, mut winit) =
-        winit::init::<GlesRenderer>().map_err(|_| anyhow!("Failed to initialize backend"))?;
-
-    let timer = Timer::immediate();
-    handle
-        .insert_source(timer, move |_, _, data| {
-            backend_dispatch(&mut backend, &mut winit, data).unwrap();
-            TimeoutAction::ToDuration(Duration::from_secs_f32(1. / 60.))
-        })
-        .map_err(|_| anyhow!("Failed to initialize backend source"))?;
-
     let source = ListeningSocketSource::new_auto()?;
-    let socket_name = source.socket_name();
-    std::env::set_var("WAYLAND_DISPLAY", socket_name);
-    info!("Listening on {socket_name:?}");
+    let socket_name = source.socket_name().to_os_string();
 
     let state = State::new(&display.handle());
     let mut data = CalloopData { display, state };
@@ -101,6 +88,18 @@ fn main() -> Result<()> {
             },
         )
         .context("Failed to initialize the wayland event source")?;
+
+    let mut backend = WinitBackend::new(&mut data);
+    let timer = Timer::immediate();
+    handle
+        .insert_source(timer, move |_, _, data| {
+            backend.dispatch(data).unwrap();
+            TimeoutAction::ToDuration(Duration::from_secs_f32(1. / 60.))
+        })
+        .map_err(|_| anyhow!("Failed to initialize backend source"))?;
+
+    std::env::set_var("WAYLAND_DISPLAY", socket_name.as_os_str());
+    info!("Listening on {socket_name:?}");
 
     std::process::Command::new("alacritty").spawn()?;
 
