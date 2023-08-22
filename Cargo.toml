@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = { version = "1.0", features = ["backtrace"] }
 log-panics = { version = "2", features = ["with-backtrace"] }
 tracing = { version = "0.1", default-features = false, features = ["max_level_debug", "release_max_level_info"] }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["ansi", "env-filter", "fmt"] }
 smithay = { default-features = false, git = "https://github.com/Smithay/smithay.git", features = [
-    "wayland_frontend",
+    "backend_winit", "desktop", "wayland_frontend"
 ] }
