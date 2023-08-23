@@ -21,6 +21,7 @@ use crate::{
 };
 
 mod backend;
+mod config;
 mod handlers;
 mod input;
 mod state;
@@ -40,22 +41,28 @@ fn main() -> Result<()> {
         .with(fmt_layer)
         .with(filter)
         .init();
-    log_panics::init();
+    if cfg!(debug_assertions) {
+        log_panics::init()
+    } else {
+        log_panics::Config::new()
+            .backtrace_mode(log_panics::BacktraceMode::Off)
+            .install_panic_hook()
+    }
 
     info!("{PKG_NAME} {PKG_VERSION}");
+
+    let display = Display::new()?;
+
+    let state = State::new(&display.handle());
+    let mut data = CalloopData { display, state };
 
     let mut event_loop = EventLoop::try_new().context("Failed to initialize event loop")?;
 
     let signal = event_loop.get_signal();
     let handle = event_loop.handle();
 
-    let display = Display::new()?;
-
     let source = ListeningSocketSource::new_auto()?;
     let socket_name = source.socket_name().to_os_string();
-
-    let state = State::new(&display.handle());
-    let mut data = CalloopData { display, state };
 
     handle
         .insert_source(source, |client_stream, _, data: &mut CalloopData| {

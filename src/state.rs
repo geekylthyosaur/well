@@ -15,7 +15,7 @@ use smithay::{
     },
 };
 
-use crate::PKG_NAME;
+use crate::{config::Config, PKG_NAME};
 
 pub struct State {
     pub is_running: bool,
@@ -29,6 +29,7 @@ pub struct State {
     pub seat_state: SeatState<Self>,
     pub data_device_state: DataDeviceState,
 
+    pub config: Config,
     pub seat: Seat<Self>,
 }
 
@@ -45,6 +46,7 @@ impl State {
         let mut seat_state = SeatState::new();
         let data_device_state = DataDeviceState::new::<State>(dh);
 
+        let config = Config::load().unwrap();
         let mut seat = seat_state.new_wl_seat(dh, PKG_NAME);
 
         let _ = seat.add_keyboard(Default::default(), 180, 60);
@@ -61,6 +63,7 @@ impl State {
             seat_state,
             data_device_state,
 
+            config,
             seat,
         }
     }

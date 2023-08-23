@@ -5,9 +5,16 @@ edition = "2021"
 
 [dependencies]
 anyhow = { version = "1.0", features = ["backtrace"] }
-log-panics = { version = "2", features = ["with-backtrace"] }
-tracing = { version = "0.1", default-features = false, features = ["max_level_debug", "release_max_level_info"] }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["ansi", "env-filter", "fmt"] }
+thiserror = "1.0"
+
+log-panics = { version = "2.1", features = ["with-backtrace"] }
+tracing = { version = "0.1",  features = ["max_level_debug", "release_max_level_info"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+mlua = { version = "0.9", features = ["lua54", "vendored", "serialize"] }
+serde = { version = "1.0", features = ["derive"] }
+xdg = "2.5"
+
 smithay = { default-features = false, git = "https://github.com/Smithay/smithay.git", features = [
     "backend_winit", "desktop", "wayland_frontend"
 ] }
