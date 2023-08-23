@@ -1,4 +1,4 @@
-use std::{os::fd::AsRawFd, str::FromStr, sync::Arc, time::Duration};
+use std::{os::fd::AsRawFd, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use smithay::{
@@ -13,7 +13,6 @@ use smithay::{
     wayland::socket::ListeningSocketSource,
 };
 use tracing::{error, info, warn};
-use tracing_subscriber::{filter::Directive, prelude::*, EnvFilter};
 
 use crate::{
     backend::WinitBackend,
@@ -24,32 +23,14 @@ mod backend;
 mod config;
 mod handlers;
 mod input;
+mod logger;
 mod state;
 
 const PKG_NAME: &str = env!("CARGO_PKG_NAME");
 const PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() -> Result<()> {
-    let level = if cfg!(debug_assertions) { "debug" } else { "warn" };
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(level))
-        .add_directive(Directive::from_str("calloop=error").unwrap())
-        .add_directive(Directive::from_str(&format!("smithay={level}")).unwrap())
-        .add_directive(Directive::from_str(&format!("{PKG_NAME}={level}")).unwrap());
-    let fmt_layer = tracing_subscriber::fmt::layer().compact();
-    tracing_subscriber::registry()
-        .with(fmt_layer)
-        .with(filter)
-        .init();
-    if cfg!(debug_assertions) {
-        log_panics::init()
-    } else {
-        log_panics::Config::new()
-            .backtrace_mode(log_panics::BacktraceMode::Off)
-            .install_panic_hook()
-    }
-
-    info!("{PKG_NAME} {PKG_VERSION}");
+    logger::init();
 
     let display = Display::new()?;
 
