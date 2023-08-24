@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{cell::RefCell, time::Duration};
 
 use anyhow::Result;
 use smithay::{
@@ -15,6 +15,8 @@ use smithay::{
 };
 
 use crate::state::State;
+
+type FullscreenUserData = (bool, Option<Rectangle<i32, Logical>>);
 
 pub struct Workspaces {
     active: usize,
@@ -74,6 +76,53 @@ impl Workspaces {
         if let Some(window) = self.focused_window(keyboard).cloned() {
             self.active_mut().unmap_window(&window);
             self.workspaces[n].map_window(window, Point::default(), false);
+        }
+    }
+
+    pub fn toggle_fullscreen(&self, keyboard: KeyboardHandle<State>) {
+        if let Some(window) = self.focused_window(keyboard) {
+            window
+                .user_data()
+                .insert_if_missing(|| RefCell::new(FullscreenUserData::default()));
+            if self.is_fullscreen(window) {
+                let old_geometry = window
+                    .user_data()
+                    .get::<RefCell<FullscreenUserData>>()
+                    .map(|d| d.borrow().1)
+                    .and_then(|d| d.map(|d| d.size));
+                window.toplevel().with_pending_state(|state| {
+                    state.size = old_geometry;
+                });
+                let user_data = window.user_data();
+                user_data
+                    .get::<RefCell<FullscreenUserData>>()
+                    .unwrap()
+                    .replace(FullscreenUserData::default());
+                window.toplevel().send_pending_configure();
+            } else {
+                let old_geometry = window.geometry();
+                window.toplevel().with_pending_state(|state| {
+                    state.size = self.output_geometry().map(|g| g.size);
+                });
+                window
+                    .user_data()
+                    .get::<RefCell<FullscreenUserData>>()
+                    .unwrap()
+                    .replace((true, Some(old_geometry)));
+                window.toplevel().send_pending_configure();
+            }
+        }
+    }
+
+    pub fn is_fullscreen(&self, window: &Window) -> bool {
+        match window
+            .user_data()
+            .get::<RefCell<FullscreenUserData>>()
+            .map(|d| d.borrow())
+            .as_deref()
+        {
+            Some((true, _)) => true,
+            Some((false, _)) | None => false,
         }
     }
 

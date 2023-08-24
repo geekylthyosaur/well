@@ -123,7 +123,9 @@ impl State {
             |data, modifiers, handle| {
                 if state == KeyState::Pressed {
                     let action = data.config.bindings.action(handle.raw_syms(), modifiers);
-                    debug!(?action);
+                    if let Some(action) = action.as_ref() {
+                        debug!(?action);
+                    }
                     action
                         .map(FilterResult::Intercept)
                         .unwrap_or(FilterResult::Forward)
@@ -143,6 +145,7 @@ impl State {
             }
             Some(Action::SwitchToWorkspace(n)) => self.workspaces.switch_to(n),
             Some(Action::MoveToWorkspace(n)) => self.workspaces.move_to(n, keyboard),
+            Some(Action::ToggleFullscreen) => self.workspaces.toggle_fullscreen(keyboard),
             _ => (),
         }
         Ok(())

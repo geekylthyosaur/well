@@ -71,16 +71,13 @@ impl TryFrom<&Path> for Config {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(transparent)]
-pub struct Bindings(pub HashMap<Pattern, Action>);
+pub struct Bindings(HashMap<Pattern, Action>);
 
 impl Bindings {
     pub fn action(&self, raw_syms: &[u32], modifiers: &ModifiersState) -> Option<Action> {
         self.0.iter().find_map(|(pattern, action)| {
-            if pattern.modifiers == (*modifiers).into() && raw_syms.contains(&pattern.key) {
-                Some(action.to_owned())
-            } else {
-                None
-            }
+            (pattern.modifiers == (*modifiers).into() && raw_syms.contains(&pattern.key))
+                .then_some(action.to_owned())
         })
     }
 }
@@ -202,6 +199,7 @@ pub enum Action {
     Spawn(String),
     SwitchToWorkspace(usize),
     MoveToWorkspace(usize),
+    ToggleFullscreen,
 }
 
 fn default_workspace_count() -> usize {

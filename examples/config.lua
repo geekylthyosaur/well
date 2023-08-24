@@ -1,4 +1,3 @@
-
 local super = "Super"
 local term_cmd = "alacritty"
 
@@ -6,6 +5,7 @@ local workspace_count = 9
 local bindings = {
   [{modifiers = {super, "Shift"}, key = "Escape"}] = "Exit",
   [{modifiers = {super}, key = "Return"}] = {Spawn = term_cmd},
+  [{modifiers = {super}, key = "f"}] = "ToggleFullscreen",
 }
 
 for i = 1, workspace_count do
