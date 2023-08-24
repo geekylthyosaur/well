@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use smithay::{
+    desktop::PopupManager,
     input::{Seat, SeatState},
     reexports::wayland_server::{
         backend::{ClientData, ClientId, DisconnectReason},
@@ -21,6 +22,7 @@ pub struct State {
     pub start_time: Instant,
 
     pub config: Config,
+    pub popups: PopupManager,
     pub workspaces: Workspaces,
 
     pub compositor_state: CompositorState,
@@ -38,6 +40,7 @@ impl State {
         let start_time = Instant::now();
 
         let config = Config::load().unwrap();
+        let popups = PopupManager::default();
         let workspaces = Workspaces::new(config.workspace_count);
 
         let compositor_state = CompositorState::new::<State>(dh);
@@ -56,6 +59,7 @@ impl State {
             start_time,
 
             config,
+            popups,
             workspaces,
 
             compositor_state,

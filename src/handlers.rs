@@ -4,7 +4,7 @@ use smithay::{
     backend::renderer::utils::on_commit_buffer_handler,
     delegate_compositor, delegate_data_device, delegate_output, delegate_seat, delegate_shm,
     delegate_xdg_shell,
-    desktop::Window,
+    desktop::{PopupKind, Window},
     input::{pointer::CursorImageStatus, Seat, SeatHandler, SeatState},
     reexports::wayland_server::{
         protocol::{wl_buffer::WlBuffer, wl_seat::WlSeat, wl_surface::WlSurface},
@@ -46,8 +46,17 @@ impl XdgShellHandler for State {
             .map_window(window, (0, 0), true)
     }
 
-    fn new_popup(&mut self, _surface: PopupSurface, _positioner: PositionerState) {
-        // TODO Handle popup creation here
+    fn new_popup(&mut self, surface: PopupSurface, positioner: PositionerState) {
+        surface.with_pending_state(|state| {
+            state.geometry = positioner.get_geometry();
+            state.positioner = positioner;
+        });
+
+        if surface.get_parent_surface().is_some() {
+            if surface.send_configure().is_ok() {
+                self.popups.track_popup(PopupKind::from(surface)).unwrap();
+            }
+        }
     }
 
     fn grab(&mut self, _surface: PopupSurface, _seat: WlSeat, _serial: Serial) {
