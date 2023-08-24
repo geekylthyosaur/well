@@ -8,9 +8,14 @@ local bindings = {
   [{modifiers = {super}, key = "Return"}] = {Spawn = term_cmd},
 }
 
-for i = 1, 9 do
+for i = 1, workspace_count do
   local key = tostring(i)
   bindings[{modifiers = {super}, key = key}] = {SwitchToWorkspace = i}
+end
+
+for i = 1, workspace_count do
+  local key = tostring(i)
+  bindings[{modifiers = {super, "Shift"}, key = key}] = {MoveToWorkspace = i}
 end
 
 return {

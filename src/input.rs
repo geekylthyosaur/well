@@ -15,10 +15,7 @@ use smithay::{
 };
 use tracing::{debug, error};
 
-use crate::{
-    config::{Action, Pattern},
-    state::State,
-};
+use crate::{config::Action, state::State};
 
 impl State {
     pub fn handle_input<I: InputBackend>(&mut self, event: InputEvent<I>) {
@@ -32,13 +29,13 @@ impl State {
             InputEvent::PointerMotionAbsolute { event, .. } => {
                 let output_geo = self.workspaces.output_geometry().unwrap();
 
-                let pos = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
+                let point = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
 
                 let serial = SERIAL_COUNTER.next_serial();
 
                 let pointer = self.seat.get_pointer().unwrap();
 
-                let under = self.workspaces.surface_under(pos);
+                let under = self.workspaces.active().surface_under(point);
 
                 if let Some((window, _loc)) = self
                     .workspaces
@@ -55,7 +52,7 @@ impl State {
                     self,
                     under,
                     &MotionEvent {
-                        location: pos,
+                        location: point,
                         serial,
                         time: event.time_msec(),
                     },
@@ -124,15 +121,8 @@ impl State {
             serial,
             time,
             |data, modifiers, handle| {
-                let key = handle.modified_sym();
-
                 if state == KeyState::Pressed {
-                    let pattern = Pattern {
-                        modifiers: (*modifiers).into(),
-                        key,
-                    };
-                    debug!(?pattern);
-                    let action = data.config.bindings.0.get(&pattern).cloned();
+                    let action = data.config.bindings.action(handle.raw_syms(), modifiers);
                     debug!(?action);
                     action
                         .map(FilterResult::Intercept)
@@ -145,12 +135,14 @@ impl State {
     }
 
     fn process_action(&mut self, action: Option<Action>) -> Result<()> {
+        let keyboard = self.seat.get_keyboard().unwrap();
         match action {
             Some(Action::Exit) => self.is_running = false,
             Some(Action::Spawn(cmd)) => {
                 Command::new(cmd).spawn()?;
             }
-            Some(Action::SwitchToWorkspace(n)) => self.workspaces.activate(n),
+            Some(Action::SwitchToWorkspace(n)) => self.workspaces.switch_to(n),
+            Some(Action::MoveToWorkspace(n)) => self.workspaces.move_to(n, keyboard),
             _ => (),
         }
         Ok(())

@@ -73,6 +73,18 @@ impl TryFrom<&Path> for Config {
 #[serde(transparent)]
 pub struct Bindings(pub HashMap<Pattern, Action>);
 
+impl Bindings {
+    pub fn action(&self, raw_syms: &[u32], modifiers: &ModifiersState) -> Option<Action> {
+        self.0.iter().find_map(|(pattern, action)| {
+            if pattern.modifiers == (*modifiers).into() && raw_syms.contains(&pattern.key) {
+                Some(action.to_owned())
+            } else {
+                None
+            }
+        })
+    }
+}
+
 #[derive(Debug, Hash, Eq, PartialEq, Deserialize)]
 pub struct Pattern {
     #[serde(deserialize_with = "deserialize_KeyModifiers")]
@@ -189,6 +201,7 @@ pub enum Action {
     Exit,
     Spawn(String),
     SwitchToWorkspace(usize),
+    MoveToWorkspace(usize),
 }
 
 fn default_workspace_count() -> usize {

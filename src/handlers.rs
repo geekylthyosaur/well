@@ -52,10 +52,8 @@ impl XdgShellHandler for State {
             state.positioner = positioner;
         });
 
-        if surface.get_parent_surface().is_some() {
-            if surface.send_configure().is_ok() {
-                self.popups.track_popup(PopupKind::from(surface)).unwrap();
-            }
+        if surface.get_parent_surface().is_some() && surface.send_configure().is_ok() {
+            self.popups.track_popup(PopupKind::from(surface)).unwrap();
         }
     }
 

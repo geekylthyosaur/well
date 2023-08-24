@@ -7,10 +7,14 @@ use smithay::{
         gles::GlesRenderer,
     },
     desktop::{space::render_output, Space, Window, WindowSurfaceType},
+    input::keyboard::KeyboardHandle,
     output::{Mode, Output, Scale},
     reexports::wayland_server::protocol::wl_surface::WlSurface,
     utils::{Logical, Point, Rectangle, Transform},
+    wayland::compositor::{get_parent, is_sync_subsurface},
 };
+
+use crate::state::State;
 
 pub struct Workspaces {
     active: usize,
@@ -31,7 +35,26 @@ impl Workspaces {
         }
     }
 
-    pub fn activate(&mut self, n: usize) {
+    pub fn focused_window(&self, keyboard: KeyboardHandle<State>) -> Option<&Window> {
+        keyboard
+            .current_focus()
+            .as_ref()
+            .and_then(|surface| {
+                (!is_sync_subsurface(surface)).then(|| {
+                    let mut root = surface.clone();
+                    while let Some(parent) = get_parent(&root) {
+                        root = parent;
+                    }
+                    self.active()
+                        .windows()
+                        .find(|w| w.toplevel().wl_surface() == &root)
+                })
+            })
+            .flatten()
+    }
+
+    pub fn switch_to(&mut self, n: usize) {
+        // TODO grab focus
         assert!(n > 0, "Workspace number should be > 0");
         if let Some(output) = self.output.as_ref() {
             let n = n - 1;
@@ -41,6 +64,16 @@ impl Workspaces {
             self.active = new;
             self.workspaces[old].unmap_output(output);
             self.workspaces[new].map_output(output, old_loc);
+        }
+    }
+
+    pub fn move_to(&mut self, n: usize, keyboard: KeyboardHandle<State>) {
+        // TODO grab focus
+        assert!(n > 0, "Workspace number should be > 0");
+        let n = n - 1;
+        if let Some(window) = self.focused_window(keyboard).cloned() {
+            self.active_mut().unmap_window(&window);
+            self.workspaces[n].map_window(window, Point::default(), false);
         }
     }
 
@@ -119,19 +152,6 @@ impl Workspaces {
             })
         }
     }
-
-    pub fn surface_under(
-        &self,
-        point: Point<f64, Logical>,
-    ) -> Option<(WlSurface, Point<i32, Logical>)> {
-        self.active()
-            .window_under(point)
-            .and_then(|(window, location)| {
-                window
-                    .surface_under(point - location.to_f64(), WindowSurfaceType::ALL)
-                    .map(|(s, p)| (s, p + location))
-            })
-    }
 }
 
 #[derive(Default)]
@@ -149,6 +169,10 @@ impl Workspace {
         self.space.map_element(window, location, activate);
     }
 
+    pub fn unmap_window(&mut self, window: &Window) {
+        self.space.unmap_elem(window);
+    }
+
     pub fn windows(&self) -> impl DoubleEndedIterator<Item = &Window> {
         self.space.elements()
     }
@@ -158,6 +182,17 @@ impl Workspace {
         point: impl Into<Point<f64, Logical>>,
     ) -> Option<(&Window, Point<i32, Logical>)> {
         self.space.element_under(point)
+    }
+
+    pub fn surface_under(
+        &self,
+        point: Point<f64, Logical>,
+    ) -> Option<(WlSurface, Point<i32, Logical>)> {
+        self.window_under(point).and_then(|(window, location)| {
+            window
+                .surface_under(point - location.to_f64(), WindowSurfaceType::ALL)
+                .map(|(s, p)| (s, p + location))
+        })
     }
 
     pub fn raise_window(&mut self, window: &Window, activate: bool) {
