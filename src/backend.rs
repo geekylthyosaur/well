@@ -1,15 +1,9 @@
-use std::time::Duration;
-
 use anyhow::Result;
 use smithay::{
     backend::{
-        renderer::{
-            damage::OutputDamageTracker, element::surface::WaylandSurfaceRenderElement,
-            gles::GlesRenderer,
-        },
+        renderer::{damage::OutputDamageTracker, gles::GlesRenderer},
         winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
     },
-    desktop::space::render_output,
     output::{Mode, Output, PhysicalProperties, Subpixel},
     utils::{Rectangle, Transform},
 };
@@ -19,7 +13,6 @@ use crate::state::{CalloopData, State};
 pub struct WinitBackend {
     backend: WinitGraphicsBackend<GlesRenderer>,
     damage_tracker: OutputDamageTracker,
-    output: Output,
     winit: WinitEventLoop,
 }
 
@@ -53,14 +46,13 @@ impl WinitBackend {
         );
         output.set_preferred(mode);
 
-        state.space.map_output(&output, (0, 0));
+        state.workspaces.map_output(&output);
 
         let damage_tracker = OutputDamageTracker::from_output(&output);
 
         Self {
             backend,
             damage_tracker,
-            output,
             winit,
         }
     }
@@ -85,28 +77,14 @@ impl WinitBackend {
         let damage = Rectangle::from_loc_and_size((0, 0), size);
 
         self.backend.bind()?;
-        render_output::<_, WaylandSurfaceRenderElement<GlesRenderer>, _, _>(
-            &self.output,
-            self.backend.renderer(),
-            1.0,
-            0,
-            [&state.space],
-            &[],
-            &mut self.damage_tracker,
-            [0.6, 0.6, 0.6, 1.0],
-        )?;
+        state
+            .workspaces
+            .render_output(self.backend.renderer(), &mut self.damage_tracker)?;
         self.backend.submit(Some(&[damage]))?;
 
-        state.space.elements().for_each(|window| {
-            window.send_frame(
-                &self.output,
-                state.start_time.elapsed(),
-                Some(Duration::ZERO),
-                |_, _| Some(self.output.clone()),
-            )
-        });
+        state.workspaces.send_frames(state.start_time.elapsed());
 
-        state.space.refresh();
+        state.workspaces.refresh();
 
         Ok(())
     }

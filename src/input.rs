@@ -2,8 +2,15 @@ use std::process::Command;
 
 use anyhow::Result;
 use smithay::{
-    backend::input::{Event, InputBackend, InputEvent, KeyState, KeyboardKeyEvent},
-    input::keyboard::FilterResult,
+    backend::input::{
+        AbsolutePositionEvent, ButtonState, Event, InputBackend, InputEvent, KeyState,
+        KeyboardKeyEvent, PointerButtonEvent,
+    },
+    input::{
+        keyboard::FilterResult,
+        pointer::{ButtonEvent, MotionEvent},
+    },
+    reexports::wayland_server::protocol::wl_surface::WlSurface,
     utils::SERIAL_COUNTER,
 };
 use tracing::{debug, error};
@@ -15,7 +22,6 @@ use crate::{
 
 impl State {
     pub fn handle_input<I: InputBackend>(&mut self, event: InputEvent<I>) {
-        let keyboard = self.seat.get_keyboard().unwrap();
         match event {
             InputEvent::Keyboard { event } => {
                 let action = self.action_from_event::<I>(event);
@@ -23,17 +29,82 @@ impl State {
                     error!(?err);
                 }
             }
-            InputEvent::PointerMotionAbsolute { .. } => {
-                if let Some(surface) = self
-                    .xdg_shell_state
-                    .toplevel_surfaces()
-                    .iter()
-                    .next()
-                    .cloned()
+            InputEvent::PointerMotionAbsolute { event, .. } => {
+                let output_geo = self.workspaces.output_geometry().unwrap();
+
+                let pos = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
+
+                let serial = SERIAL_COUNTER.next_serial();
+
+                let pointer = self.seat.get_pointer().unwrap();
+
+                let under = self.workspaces.surface_under(pos);
+
+                if let Some((window, _loc)) = self
+                    .workspaces
+                    .active()
+                    .window_under(pointer.current_location())
+                    .map(|(w, l)| (w.clone(), l))
                 {
-                    let surface = surface.wl_surface().clone();
-                    keyboard.set_focus(self, Some(surface), 0.into());
+                    let serial = SERIAL_COUNTER.next_serial();
+                    let keyboard = self.seat.get_keyboard().unwrap();
+                    keyboard.set_focus(self, Some(window.toplevel().wl_surface().clone()), serial);
+                }
+
+                pointer.motion(
+                    self,
+                    under,
+                    &MotionEvent {
+                        location: pos,
+                        serial,
+                        time: event.time_msec(),
+                    },
+                );
+            }
+            InputEvent::PointerButton { event, .. } => {
+                let pointer = self.seat.get_pointer().unwrap();
+                let keyboard = self.seat.get_keyboard().unwrap();
+
+                let serial = SERIAL_COUNTER.next_serial();
+
+                let button = event.button_code();
+
+                let button_state = event.state();
+
+                if ButtonState::Pressed == button_state && !pointer.is_grabbed() {
+                    if let Some((window, _loc)) = self
+                        .workspaces
+                        .active()
+                        .window_under(pointer.current_location())
+                        .map(|(w, l)| (w.clone(), l))
+                    {
+                        self.workspaces.active_mut().raise_window(&window, true);
+                        keyboard.set_focus(
+                            self,
+                            Some(window.toplevel().wl_surface().clone()),
+                            serial,
+                        );
+                        self.workspaces.active().windows().for_each(|window| {
+                            window.toplevel().send_pending_configure();
+                        });
+                    } else {
+                        self.workspaces.active().windows().for_each(|window| {
+                            window.set_activated(false);
+                            window.toplevel().send_pending_configure();
+                        });
+                        keyboard.set_focus(self, Option::<WlSurface>::None, serial);
+                    }
                 };
+
+                pointer.button(
+                    self,
+                    &ButtonEvent {
+                        button,
+                        state: button_state,
+                        serial,
+                        time: event.time_msec(),
+                    },
+                );
             }
             _ => {}
         }
@@ -79,6 +150,7 @@ impl State {
             Some(Action::Spawn(cmd)) => {
                 Command::new(cmd).spawn()?;
             }
+            Some(Action::SwitchToWorkspace(n)) => self.workspaces.activate(n),
             _ => (),
         }
         Ok(())

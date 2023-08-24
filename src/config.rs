@@ -8,9 +8,11 @@ use tracing::{debug, error, info, warn};
 
 use crate::PKG_NAME;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct Config {
     pub bindings: Bindings,
+    #[serde(default = "default_workspace_count")]
+    pub workspace_count: usize,
 }
 
 impl mlua::UserData for Config {}
@@ -38,26 +40,19 @@ impl Config {
                 Ok(cfg) => cfg,
                 Err(Error::Io(err)) => {
                     error!(?err, "Failed to load configuration file");
+                    warn!("Using default configuration");
                     Self::default()
                 }
                 Err(Error::Lua(err)) => anyhow::bail!("Failed to parse configuration file: {err}"),
             }
         } else {
+            warn!("Using default configuration");
             Self::default()
         };
 
         debug!(?config);
 
         Ok(config)
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        warn!("Using default configuration");
-        Self {
-            bindings: Bindings::default(),
-        }
     }
 }
 
@@ -193,4 +188,9 @@ pub enum Error {
 pub enum Action {
     Exit,
     Spawn(String),
+    SwitchToWorkspace(usize),
+}
+
+fn default_workspace_count() -> usize {
+    9
 }

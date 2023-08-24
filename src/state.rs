@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use smithay::{
-    desktop::{Space, Window},
     input::{Seat, SeatState},
     reexports::wayland_server::{
         backend::{ClientData, ClientId, DisconnectReason},
@@ -15,13 +14,14 @@ use smithay::{
     },
 };
 
-use crate::{config::Config, PKG_NAME};
+use crate::{config::Config, shell::Workspaces, PKG_NAME};
 
 pub struct State {
     pub is_running: bool,
     pub start_time: Instant,
 
-    pub space: Space<Window>,
+    pub config: Config,
+    pub workspaces: Workspaces,
 
     pub compositor_state: CompositorState,
     pub xdg_shell_state: XdgShellState,
@@ -29,7 +29,6 @@ pub struct State {
     pub seat_state: SeatState<Self>,
     pub data_device_state: DataDeviceState,
 
-    pub config: Config,
     pub seat: Seat<Self>,
 }
 
@@ -38,7 +37,8 @@ impl State {
         let is_running = true;
         let start_time = Instant::now();
 
-        let space = Space::default();
+        let config = Config::load().unwrap();
+        let workspaces = Workspaces::new(config.workspace_count);
 
         let compositor_state = CompositorState::new::<State>(dh);
         let xdg_shell_state = XdgShellState::new::<State>(dh);
@@ -46,16 +46,17 @@ impl State {
         let mut seat_state = SeatState::new();
         let data_device_state = DataDeviceState::new::<State>(dh);
 
-        let config = Config::load().unwrap();
         let mut seat = seat_state.new_wl_seat(dh, PKG_NAME);
 
         let _ = seat.add_keyboard(Default::default(), 180, 60);
+        let _ = seat.add_pointer();
 
         Self {
             is_running,
             start_time,
 
-            space,
+            config,
+            workspaces,
 
             compositor_state,
             xdg_shell_state,
@@ -63,7 +64,6 @@ impl State {
             seat_state,
             data_device_state,
 
-            config,
             seat,
         }
     }

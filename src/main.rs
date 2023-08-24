@@ -24,6 +24,7 @@ mod config;
 mod handlers;
 mod input;
 mod logger;
+mod shell;
 mod state;
 
 const PKG_NAME: &str = env!("CARGO_PKG_NAME");
@@ -88,8 +89,6 @@ fn main() -> Result<()> {
 
     std::env::set_var("WAYLAND_DISPLAY", socket_name.as_os_str());
     info!("Listening on {socket_name:?}");
-
-    std::process::Command::new("alacritty").spawn()?;
 
     let timeout = None;
     event_loop.run(timeout, &mut data, move |data| {
