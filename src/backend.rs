@@ -60,18 +60,17 @@ impl WinitBackend {
     pub fn dispatch(&mut self, data: &mut CalloopData) -> Result<()> {
         let state = &mut data.state;
 
-        self.winit
-            .dispatch_new_events(|event| match event {
-                WinitEvent::Resized { .. } => {}
-                WinitEvent::Input(event) => state.handle_input(event),
-                _ => (),
-            })
-            .map_err(|err| {
-                if matches!(err, WinitError::WindowClosed) {
-                    state.is_running = false
-                }
-                err
-            })?;
+        if let Err(WinitError::WindowClosed) = self.winit.dispatch_new_events(|event| match event {
+            WinitEvent::Resized { size, .. } => state.workspaces.change_output_mode(Mode {
+                size,
+                refresh: 60_000,
+            }),
+            WinitEvent::Input(event) => state.handle_input(event),
+            _ => (),
+        }) {
+            state.is_running = false;
+            return Ok(());
+        }
 
         let size = self.backend.window_size().physical_size;
         let damage = Rectangle::from_loc_and_size((0, 0), size);

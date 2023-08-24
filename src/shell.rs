@@ -7,9 +7,9 @@ use smithay::{
         gles::GlesRenderer,
     },
     desktop::{space::render_output, Space, Window, WindowSurfaceType},
-    output::Output,
+    output::{Mode, Output, Scale},
     reexports::wayland_server::protocol::wl_surface::WlSurface,
-    utils::{Logical, Point, Rectangle},
+    utils::{Logical, Point, Rectangle, Transform},
 };
 
 pub struct Workspaces {
@@ -50,6 +50,30 @@ impl Workspaces {
 
     pub fn active_mut(&mut self) -> &mut Workspace {
         &mut self.workspaces[self.active]
+    }
+
+    pub fn change_output_mode(&self, new_mode: Mode) {
+        if let Some(output) = self.output.as_ref() {
+            output.change_current_state(Some(new_mode), None, None, None);
+        }
+    }
+
+    pub fn _change_output_transform(&self, new_transform: Transform) {
+        if let Some(output) = self.output.as_ref() {
+            output.change_current_state(None, Some(new_transform), None, None);
+        }
+    }
+
+    pub fn _change_output_scale(&self, new_scale: Scale) {
+        if let Some(output) = self.output.as_ref() {
+            output.change_current_state(None, None, Some(new_scale), None);
+        }
+    }
+
+    pub fn _change_output_location(&self, new_location: Point<i32, Logical>) {
+        if let Some(output) = self.output.as_ref() {
+            output.change_current_state(None, None, None, Some(new_location));
+        }
     }
 
     pub fn map_output(&mut self, output: &Output) {
