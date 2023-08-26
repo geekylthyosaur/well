@@ -46,7 +46,7 @@ impl WinitBackend {
         );
         output.set_preferred(mode);
 
-        state.workspaces.map_output(&output);
+        state.shell.workspaces.map_output(&output);
 
         let damage_tracker = OutputDamageTracker::from_output(&output);
 
@@ -61,7 +61,7 @@ impl WinitBackend {
         let state = &mut data.state;
 
         if let Err(WinitError::WindowClosed) = self.winit.dispatch_new_events(|event| match event {
-            WinitEvent::Resized { size, .. } => state.workspaces.change_output_mode(Mode {
+            WinitEvent::Resized { size, .. } => state.shell.workspaces.change_output_mode(Mode {
                 size,
                 refresh: 60_000,
             }),
@@ -77,13 +77,17 @@ impl WinitBackend {
 
         self.backend.bind()?;
         state
+            .shell
             .workspaces
             .render_output(self.backend.renderer(), &mut self.damage_tracker)?;
         self.backend.submit(Some(&[damage]))?;
 
-        state.workspaces.send_frames(state.start_time.elapsed());
+        state
+            .shell
+            .workspaces
+            .send_frames(state.start_time.elapsed());
 
-        state.workspaces.refresh();
+        state.shell.workspaces.refresh();
 
         Ok(())
     }

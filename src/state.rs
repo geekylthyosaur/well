@@ -15,7 +15,7 @@ use smithay::{
     },
 };
 
-use crate::{config::Config, shell::Workspaces, PKG_NAME};
+use crate::{config::Config, shell::Shell, PKG_NAME};
 
 pub struct State {
     pub is_running: bool,
@@ -23,7 +23,7 @@ pub struct State {
 
     pub config: Config,
     pub popups: PopupManager,
-    pub workspaces: Workspaces,
+    pub shell: Shell,
 
     pub compositor_state: CompositorState,
     pub xdg_shell_state: XdgShellState,
@@ -41,7 +41,7 @@ impl State {
 
         let config = Config::load().unwrap();
         let popups = PopupManager::default();
-        let workspaces = Workspaces::new(config.workspace_count);
+        let shell = Shell::new(config.workspace_count);
 
         let compositor_state = CompositorState::new::<State>(dh);
         let xdg_shell_state = XdgShellState::new::<State>(dh);
@@ -60,7 +60,7 @@ impl State {
 
             config,
             popups,
-            workspaces,
+            shell,
 
             compositor_state,
             xdg_shell_state,

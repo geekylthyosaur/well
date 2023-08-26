@@ -41,9 +41,11 @@ impl XdgShellHandler for State {
 
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         let window = Window::new(surface);
-        self.workspaces
-            .active_mut()
-            .map_window(window, (0, 0), true)
+        self.shell
+            .workspaces
+            .current_mut()
+            .map_window(window.clone(), (0, 0), true);
+        self.set_focus(Some(window));
     }
 
     fn new_popup(&mut self, surface: PopupSurface, positioner: PositionerState) {
@@ -91,8 +93,9 @@ impl CompositorHandler for State {
                 root = parent;
             }
             if let Some(window) = self
+                .shell
                 .workspaces
-                .active()
+                .current()
                 .windows()
                 .find(|w| w.toplevel().wl_surface() == &root)
             {
@@ -100,8 +103,9 @@ impl CompositorHandler for State {
             }
         };
         if let Some(window) = self
+            .shell
             .workspaces
-            .active()
+            .current()
             .windows()
             .find(|w| w.toplevel().wl_surface() == surface)
             .cloned()

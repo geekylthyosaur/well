@@ -1,5 +1,3 @@
-use std::process::Command;
-
 use anyhow::Result;
 use smithay::{
     backend::input::{
@@ -27,7 +25,7 @@ impl State {
                 }
             }
             InputEvent::PointerMotionAbsolute { event, .. } => {
-                let output_geo = self.workspaces.output_geometry().unwrap();
+                let output_geo = self.shell.workspaces.output_geometry().unwrap();
 
                 let point = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
 
@@ -35,17 +33,16 @@ impl State {
 
                 let pointer = self.seat.get_pointer().unwrap();
 
-                let under = self.workspaces.active().surface_under(point);
+                let under = self.shell.workspaces.current().surface_under(point);
 
                 if let Some((window, _loc)) = self
+                    .shell
                     .workspaces
-                    .active()
+                    .current()
                     .window_under(pointer.current_location())
                     .map(|(w, l)| (w.clone(), l))
                 {
-                    let serial = SERIAL_COUNTER.next_serial();
-                    let keyboard = self.seat.get_keyboard().unwrap();
-                    keyboard.set_focus(self, Some(window.toplevel().wl_surface().clone()), serial);
+                    self.set_focus(Some(window));
                 }
 
                 pointer.motion(
@@ -70,25 +67,33 @@ impl State {
 
                 if ButtonState::Pressed == button_state && !pointer.is_grabbed() {
                     if let Some((window, _loc)) = self
+                        .shell
                         .workspaces
-                        .active()
+                        .current()
                         .window_under(pointer.current_location())
                         .map(|(w, l)| (w.clone(), l))
                     {
-                        self.workspaces.active_mut().raise_window(&window, true);
-                        keyboard.set_focus(
-                            self,
-                            Some(window.toplevel().wl_surface().clone()),
-                            serial,
-                        );
-                        self.workspaces.active().windows().for_each(|window| {
-                            window.toplevel().send_pending_configure();
-                        });
+                        self.shell
+                            .workspaces
+                            .current_mut()
+                            .raise_window(&window, true);
+                        self.set_focus(Some(window));
+                        self.shell
+                            .workspaces
+                            .current()
+                            .windows()
+                            .for_each(|window| {
+                                window.toplevel().send_pending_configure();
+                            });
                     } else {
-                        self.workspaces.active().windows().for_each(|window| {
-                            window.set_activated(false);
-                            window.toplevel().send_pending_configure();
-                        });
+                        self.shell
+                            .workspaces
+                            .current()
+                            .windows()
+                            .for_each(|window| {
+                                window.set_activated(false);
+                                window.toplevel().send_pending_configure();
+                            });
                         keyboard.set_focus(self, Option::<WlSurface>::None, serial);
                     }
                 };
@@ -137,15 +142,23 @@ impl State {
     }
 
     fn process_action(&mut self, action: Option<Action>) -> Result<()> {
-        let keyboard = self.seat.get_keyboard().unwrap();
         match action {
             Some(Action::Exit) => self.is_running = false,
-            Some(Action::Spawn(cmd)) => {
-                Command::new(cmd).spawn()?;
+            Some(Action::Spawn(cmd)) => self.shell.spawn(cmd),
+            Some(Action::SwitchToWorkspace(n)) => {
+                self.shell.switch_to(n);
+                let window = self.shell.workspaces.current().windows().next().cloned();
+                self.set_focus(window);
             }
-            Some(Action::SwitchToWorkspace(n)) => self.workspaces.switch_to(n),
-            Some(Action::MoveToWorkspace(n)) => self.workspaces.move_to(n, keyboard),
-            Some(Action::ToggleFullscreen) => self.workspaces.toggle_fullscreen(keyboard),
+            Some(Action::MoveToWorkspace(n)) => {
+                let window = self.get_focus();
+                self.shell.move_to(window, n);
+                self.set_focus(None);
+            }
+            Some(Action::ToggleFullscreen) => {
+                let window = self.get_focus();
+                self.shell.toggle_fullscreen(window.as_ref());
+            }
             _ => (),
         }
         Ok(())
