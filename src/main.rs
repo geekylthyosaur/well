@@ -24,6 +24,7 @@ mod config;
 mod handlers;
 mod input;
 mod logger;
+mod render;
 mod shell;
 mod state;
 

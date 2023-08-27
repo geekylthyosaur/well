@@ -18,10 +18,17 @@ impl Shell {
         Self { workspaces }
     }
 
-    pub fn spawn(&self, cmd: String) {
-        if let Err(err) = Command::new(cmd).spawn() {
-            tracing::error!(?err);
-        }
+    pub fn spawn(&self, command: String) {
+        std::thread::spawn(move || {
+            let mut cmd = Command::new("/bin/sh");
+            cmd.args(["-c", command.as_str()]);
+            match cmd.spawn() {
+                Ok(mut child) => {
+                    let _ = child.wait();
+                }
+                Err(err) => tracing::error!(?err),
+            }
+        });
     }
 
     pub fn switch_to(&mut self, new: usize) {

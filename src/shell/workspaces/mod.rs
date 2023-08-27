@@ -1,15 +1,16 @@
 use std::time::Duration;
 
-use anyhow::Result;
 use smithay::{
     backend::renderer::{
-        damage::OutputDamageTracker, element::surface::WaylandSurfaceRenderElement,
+        element::{surface::WaylandSurfaceRenderElement, AsRenderElements},
         gles::GlesRenderer,
     },
-    desktop::{space::render_output, Window},
+    desktop::Window,
     output::{Mode, Output, Scale},
     utils::{Logical, Point, Rectangle, Transform},
 };
+
+use crate::render::{OutlineShader, OutputRenderElement};
 
 use self::workspace::Workspace;
 
@@ -19,7 +20,7 @@ mod workspace;
 
 pub struct Workspaces {
     current: usize,
-    output: Option<Output>,
+    pub output: Option<Output>,
     workspaces: Vec<Workspace>,
 }
 
@@ -124,26 +125,47 @@ impl Workspaces {
         self.current_mut().refresh();
     }
 
-    pub fn render_output(
-        &self,
-        renderer: &mut GlesRenderer,
-        damage_tracker: &mut OutputDamageTracker,
-    ) -> Result<()> {
+    pub fn render_elements(&self, renderer: &mut GlesRenderer) -> Vec<OutputRenderElement> {
         if let Some(output) = self.output.as_ref() {
-            let clear_color = [0.6, 0.6, 0.6, 1.0];
-            render_output::<_, WaylandSurfaceRenderElement<GlesRenderer>, _, _>(
-                output,
-                renderer,
-                1.0,
-                0,
-                self.workspaces.iter().map(|w| &w.space),
-                &[],
-                damage_tracker,
-                clear_color,
-            )?;
-        }
+            let space = &self.current().space;
+            let output_geometry = space.output_geometry(output);
+            let output_scale = output.current_scale().fractional_scale();
+            let alpha = 1.0;
 
-        Ok(())
+            let mut elements: Vec<OutputRenderElement> = Vec::new();
+
+            for e in space.elements().rev() {
+                let color = [0.3, 0.3, 0.3, 1.0];
+                let geometry = Rectangle::from_loc_and_size(
+                    space.element_location(e).unwrap_or_default(),
+                    e.geometry().size,
+                );
+                let thickness = 5;
+                let radius = thickness * 2;
+                let shader_element =
+                    OutlineShader::element(renderer, color, geometry, radius, thickness);
+                elements.push(shader_element.into());
+
+                let scale = output_scale;
+                let location = (output_geometry.unwrap_or_default().loc - e.geometry().loc)
+                    .to_physical_precise_round(scale);
+                let mut window_elements = e
+                    .render_elements::<WaylandSurfaceRenderElement<GlesRenderer>>(
+                        renderer,
+                        location,
+                        scale.into(),
+                        alpha,
+                    )
+                    .into_iter()
+                    .map(OutputRenderElement::from)
+                    .collect();
+                elements.append(&mut window_elements);
+            }
+
+            elements
+        } else {
+            vec![]
+        }
     }
 
     pub fn send_frames(&self, time: Duration) {
