@@ -3,12 +3,15 @@ use std::os::fd::OwnedFd;
 use smithay::{
     backend::renderer::utils::on_commit_buffer_handler,
     delegate_compositor, delegate_data_device, delegate_output, delegate_seat, delegate_shm,
-    delegate_xdg_shell,
+    delegate_xdg_decoration, delegate_xdg_shell,
     desktop::{PopupKind, Window},
     input::{pointer::CursorImageStatus, Seat, SeatHandler, SeatState},
-    reexports::wayland_server::{
-        protocol::{wl_buffer::WlBuffer, wl_seat::WlSeat, wl_surface::WlSurface},
-        Client,
+    reexports::{
+        wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode,
+        wayland_server::{
+            protocol::{wl_buffer::WlBuffer, wl_seat::WlSeat, wl_surface::WlSurface},
+            Client,
+        },
     },
     utils::Serial,
     wayland::{
@@ -21,8 +24,8 @@ use smithay::{
             ClientDndGrabHandler, DataDeviceHandler, DataDeviceState, ServerDndGrabHandler,
         },
         shell::xdg::{
-            PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler, XdgShellState,
-            XdgToplevelSurfaceData,
+            decoration::XdgDecorationHandler, PopupSurface, PositionerState, ToplevelSurface,
+            XdgShellHandler, XdgShellState, XdgToplevelSurfaceData,
         },
         shm::{ShmHandler, ShmState},
     },
@@ -62,6 +65,16 @@ impl XdgShellHandler for State {
     fn grab(&mut self, _surface: PopupSurface, _seat: WlSeat, _serial: Serial) {
         // TODO Handle popup grab here
     }
+}
+
+impl XdgDecorationHandler for State {
+    fn new_decoration(&mut self, toplevel: ToplevelSurface) {
+        toplevel.with_pending_state(|state| state.decoration_mode = Some(Mode::ServerSide));
+        toplevel.send_configure();
+    }
+
+    fn request_mode(&mut self, _toplevel: ToplevelSurface, _mode: Mode) {}
+    fn unset_mode(&mut self, _toplevel: ToplevelSurface) {}
 }
 
 impl DataDeviceHandler for State {
@@ -151,3 +164,4 @@ delegate_shm!(State);
 delegate_seat!(State);
 delegate_data_device!(State);
 delegate_output!(State);
+delegate_xdg_decoration!(State);

@@ -1,14 +1,11 @@
 use anyhow::Result;
 use smithay::{
     backend::{
-        renderer::{
-            damage::{OutputDamageTracker, RenderOutputResult},
-            gles::GlesRenderer,
-        },
+        renderer::{damage::OutputDamageTracker, gles::GlesRenderer},
         winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
     },
     output::{Mode, Output, PhysicalProperties, Subpixel},
-    utils::Transform,
+    utils::{Rectangle, Transform},
 };
 
 use crate::state::{CalloopData, State};
@@ -43,7 +40,7 @@ impl WinitBackend {
         let _global = output.create_global::<State>(&display.handle());
         output.change_current_state(
             Some(mode),
-            Some(Transform::Flipped180),
+            Some(Transform::Normal),
             None,
             Some((0, 0).into()),
         );
@@ -77,11 +74,19 @@ impl WinitBackend {
 
         self.backend.bind()?;
         let age = self.backend.buffer_age().unwrap_or_default();
-        if let Ok(RenderOutputResult { damage, .. }) =
-            state.render_output(age, &mut self.damage_tracker, self.backend.renderer())
-        {
-            self.backend.submit(damage.as_deref())?;
-        }
+        let damage = Rectangle::from_loc_and_size(
+            (0, 0),
+            state
+                .shell
+                .workspaces
+                .output_geometry()
+                .unwrap()
+                .size
+                .to_physical(1),
+        );
+        state.render_output(&mut self.backend, age, &mut self.damage_tracker);
+        self.backend.bind()?;
+        self.backend.submit(Some(&[damage]))?;
 
         state
             .shell

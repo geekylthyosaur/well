@@ -10,7 +10,7 @@ use smithay::{
     wayland::{
         compositor::{CompositorClientState, CompositorState},
         data_device::DataDeviceState,
-        shell::xdg::XdgShellState,
+        shell::xdg::{decoration::XdgDecorationState, XdgShellState},
         shm::ShmState,
     },
 };
@@ -30,6 +30,7 @@ pub struct State {
     pub shm_state: ShmState,
     pub seat_state: SeatState<Self>,
     pub data_device_state: DataDeviceState,
+    pub xdg_decoration_state: XdgDecorationState,
 
     pub seat: Seat<Self>,
 }
@@ -48,6 +49,7 @@ impl State {
         let shm_state = ShmState::new::<State>(dh, vec![]);
         let mut seat_state = SeatState::new();
         let data_device_state = DataDeviceState::new::<State>(dh);
+        let xdg_decoration_state = XdgDecorationState::new::<State>(dh);
 
         let mut seat = seat_state.new_wl_seat(dh, PKG_NAME);
 
@@ -67,6 +69,7 @@ impl State {
             shm_state,
             seat_state,
             data_device_state,
+            xdg_decoration_state,
 
             seat,
         }

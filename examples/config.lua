@@ -21,4 +21,9 @@ end
 return {
   bindings = bindings,
   workspace_count = workspace_count,
+  outline = {
+    color = {0.5, 0.5, 0.5},
+    focused_color = {0.5, 0.5, 1.0},
+    thickness = 0,
+  },
 }

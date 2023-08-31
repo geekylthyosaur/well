@@ -1,16 +1,24 @@
-use std::time::Duration;
+use std::{ffi::CStr, time::Duration};
 
 use smithay::{
-    backend::renderer::{
-        element::{surface::WaylandSurfaceRenderElement, AsRenderElements},
-        gles::GlesRenderer,
+    backend::{
+        renderer::{
+            damage::OutputDamageTracker,
+            element::{surface::WaylandSurfaceRenderElement, AsRenderElements},
+            gles::{ffi, GlesRenderer, GlesTexture},
+            Bind, Offscreen,
+        },
+        winit::WinitGraphicsBackend,
     },
     desktop::Window,
     output::{Mode, Output, Scale},
     utils::{Logical, Point, Rectangle, Transform},
 };
 
-use crate::render::{OutlineShader, OutputRenderElement};
+use crate::{
+    config::Config,
+    render::{OutlineShader, OutputRenderElement, CLEAR_COLOR},
+};
 
 use self::workspace::Workspace;
 
@@ -125,47 +133,104 @@ impl Workspaces {
         self.current_mut().refresh();
     }
 
-    pub fn render_elements(&self, renderer: &mut GlesRenderer) -> Vec<OutputRenderElement> {
+    pub fn render_elements(
+        &self,
+        backend: &mut WinitGraphicsBackend<GlesRenderer>,
+        damage_tracker: &mut OutputDamageTracker,
+        focus: Option<&Window>,
+        config: &Config,
+    ) -> Vec<OutputRenderElement> {
+        let elements = vec![];
         if let Some(output) = self.output.as_ref() {
             let space = &self.current().space;
-            let output_geometry = space.output_geometry(output);
-            let output_scale = output.current_scale().fractional_scale();
+            let scale = output.current_scale().fractional_scale();
             let alpha = 1.0;
 
-            let mut elements: Vec<OutputRenderElement> = Vec::new();
+            for e in space.elements() {
+                let location = space.element_location(e).unwrap_or_default();
+                let thickness = config.outline.thickness;
 
-            for e in space.elements().rev() {
-                let color = [0.3, 0.3, 0.3, 1.0];
-                let geometry = Rectangle::from_loc_and_size(
-                    space.element_location(e).unwrap_or_default(),
-                    e.geometry().size,
-                );
-                let thickness = 5;
-                let radius = thickness * 2;
-                let shader_element =
-                    OutlineShader::element(renderer, color, geometry, radius, thickness);
-                elements.push(shader_element.into());
-
-                let scale = output_scale;
-                let location = (output_geometry.unwrap_or_default().loc - e.geometry().loc)
-                    .to_physical_precise_round(scale);
-                let mut window_elements = e
+                let location = (location - e.geometry().loc).to_physical_precise_round(scale);
+                let window_elements = e
                     .render_elements::<WaylandSurfaceRenderElement<GlesRenderer>>(
-                        renderer,
+                        backend.renderer(),
                         location,
                         scale.into(),
                         alpha,
                     )
                     .into_iter()
                     .map(OutputRenderElement::from)
-                    .collect();
-                elements.append(&mut window_elements);
-            }
+                    .collect::<Vec<_>>();
 
-            elements
-        } else {
-            vec![]
+                let size = space.element_geometry(e).unwrap();
+
+                let size = size.size.to_buffer(scale as i32, Transform::Normal);
+                if size.w != 0 || size.h != 0 {
+                    let texture = Offscreen::<GlesTexture>::create_buffer(
+                        backend.renderer(),
+                        smithay::backend::allocator::Fourcc::Argb8888,
+                        size,
+                    )
+                    .unwrap();
+                    let tex_id = texture.tex_id();
+                    // Clone is necessary to keep tex_id valid
+                    backend.renderer().bind(texture.clone()).unwrap();
+
+                    damage_tracker
+                        .render_output(backend.renderer(), 0, &window_elements, CLEAR_COLOR)
+                        .unwrap();
+
+                    backend.bind().unwrap();
+
+                    let renderer = backend.renderer();
+                    let location = space.element_location(e).unwrap_or_default();
+                    let color = focus
+                        .and_then(|focus| focus.eq(e).then_some(config.outline.focus_color))
+                        .unwrap_or(config.outline.color);
+                    let geometry = Rectangle::from_loc_and_size(location, e.geometry().size);
+                    let radius = 10;
+
+                    let shader_element =
+                        OutlineShader::element(renderer, color, geometry, radius, thickness);
+                    let elements = vec![OutputRenderElement::Outline(shader_element)];
+
+                    renderer
+                        .with_context(|gl| unsafe {
+                            let mut program = 0;
+                            gl.GetIntegerv(ffi::CURRENT_PROGRAM, &mut program);
+                            let program: u32 = std::mem::transmute(program);
+                            gl.ActiveTexture(ffi::TEXTURE0);
+                            gl.BindTexture(ffi::TEXTURE_2D, tex_id);
+                            gl.TexParameteri(
+                                ffi::TEXTURE_2D,
+                                ffi::TEXTURE_MIN_FILTER,
+                                ffi::NEAREST as i32,
+                            );
+                            gl.TexParameteri(
+                                ffi::TEXTURE_2D,
+                                ffi::TEXTURE_MAG_FILTER,
+                                ffi::NEAREST as i32,
+                            );
+                            let location = gl.GetUniformLocation(
+                                program,
+                                CStr::from_bytes_with_nul(b"tex\0").unwrap().as_ptr()
+                                    as *const ffi::types::GLchar,
+                            );
+                            gl.Uniform1i(location, 0);
+                        })
+                        .unwrap();
+
+                    self._change_output_transform(Transform::Flipped180);
+
+                    damage_tracker
+                        .render_output(renderer, 0, &elements, CLEAR_COLOR)
+                        .unwrap();
+
+                    self._change_output_transform(Transform::Normal);
+                }
+            }
         }
+        elements
     }
 
     pub fn send_frames(&self, time: Duration) {

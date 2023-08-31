@@ -13,6 +13,7 @@ pub struct Config {
     pub bindings: Bindings,
     #[serde(default = "default_workspace_count")]
     pub workspace_count: usize,
+    pub outline: Outline,
 }
 
 impl mlua::UserData for Config {}
@@ -80,6 +81,16 @@ impl Bindings {
                 .then_some(action.to_owned())
         })
     }
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct Outline {
+    #[serde(default = "default_outline_color")]
+    pub color: [f32; 3],
+    #[serde(default = "default_outline_focus_color")]
+    pub focus_color: [f32; 3],
+    #[serde(default = "default_outline_thickness")]
+    pub thickness: u8,
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Deserialize)]
@@ -204,4 +215,16 @@ pub enum Action {
 
 fn default_workspace_count() -> usize {
     9
+}
+
+fn default_outline_color() -> [f32; 3] {
+    [0.3, 0.3, 0.3]
+}
+
+fn default_outline_focus_color() -> [f32; 3] {
+    [0.5, 0.5, 1.0]
+}
+
+fn default_outline_thickness() -> u8 {
+    5
 }
