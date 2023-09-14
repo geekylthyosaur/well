@@ -154,7 +154,8 @@ impl Workspaces {
                     continue;
                 }
 
-                let location = (geometry.loc - e.geometry().loc).to_physical_precise_round(scale);
+                let location =
+                    (Point::from((0, 0)) - e.geometry().loc).to_physical_precise_round(scale);
                 let window_elements = e
                     .render_elements::<WaylandSurfaceRenderElement<GlesRenderer>>(
                         backend.renderer(),
@@ -178,11 +179,9 @@ impl Workspaces {
                     .unwrap();
 
                 let renderer = backend.renderer();
-                let location = space.element_location(e).unwrap_or_default();
                 let color = focus
                     .and_then(|focus| focus.eq(e).then_some(config.outline.focus_color))
                     .unwrap_or(config.outline.color);
-                let geometry = Rectangle::from_loc_and_size(location, e.geometry().size);
                 let radius = config.outline.radius as f32;
                 let thickness = config.outline.thickness as f32;
 

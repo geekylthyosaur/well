@@ -132,17 +132,20 @@ impl RenderElement<GlesRenderer> for RoundedElement {
     fn draw(
         &self,
         frame: &mut GlesFrame<'_>,
-        src: Rectangle<f64, smithay::utils::Buffer>,
+        mut src: Rectangle<f64, smithay::utils::Buffer>,
         dst: Rectangle<i32, smithay::utils::Physical>,
         damage: &[Rectangle<i32, smithay::utils::Physical>],
     ) -> Result<(), GlesError> {
         let program = Some(&self.program);
+
         let additional_uniforms = vec![
             Uniform::new("color", self.color),
             Uniform::new("thickness", self.thickness),
             Uniform::new("radius", self.radius),
             Uniform::new("size", (dst.size.w as f32, dst.size.h as f32)),
         ];
+        src.loc.x -= self.geometry.loc.x as f64;
+        src.loc.y -= self.geometry.loc.y as f64;
         frame.render_texture_from_to(
             &self.texture,
             src,
