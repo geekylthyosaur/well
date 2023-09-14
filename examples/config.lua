@@ -24,6 +24,7 @@ return {
   outline = {
     color = {0.5, 0.5, 0.5},
     focused_color = {0.5, 0.5, 1.0},
+    radius = 10,
     thickness = 0,
   },
 }

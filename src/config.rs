@@ -83,14 +83,16 @@ impl Bindings {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub struct Outline {
     #[serde(default = "default_outline_color")]
     pub color: [f32; 3],
     #[serde(default = "default_outline_focus_color")]
     pub focus_color: [f32; 3],
+    #[serde(default = "default_outline_radius")]
+    pub radius: usize,
     #[serde(default = "default_outline_thickness")]
-    pub thickness: u8,
+    pub thickness: usize,
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Deserialize)]
@@ -225,6 +227,10 @@ fn default_outline_focus_color() -> [f32; 3] {
     [0.5, 0.5, 1.0]
 }
 
-fn default_outline_thickness() -> u8 {
+fn default_outline_radius() -> usize {
+    10
+}
+
+fn default_outline_thickness() -> usize {
     5
 }

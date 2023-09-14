@@ -1,14 +1,18 @@
 use smithay::{
     backend::{
         renderer::{
-            damage::OutputDamageTracker,
-            element::surface::WaylandSurfaceRenderElement,
-            gles::{element::PixelShaderElement, GlesRenderer, Uniform, UniformName, UniformType},
+            damage::{Error as RenderOutputError, OutputDamageTracker, RenderOutputResult},
+            element::{surface::WaylandSurfaceRenderElement, Element, Id, RenderElement},
+            gles::{
+                GlesError, GlesFrame, GlesRenderer, GlesTexProgram, GlesTexture, Uniform,
+                UniformName, UniformType,
+            },
+            utils::CommitCounter,
         },
         winit::WinitGraphicsBackend,
     },
     render_elements,
-    utils::{Logical, Rectangle},
+    utils::{Logical, Rectangle, Transform},
 };
 
 use crate::state::State;
@@ -23,67 +27,131 @@ impl State {
         backend: &mut WinitGraphicsBackend<GlesRenderer>,
         age: usize,
         damage_tracker: &mut OutputDamageTracker,
-    ) -> () {
+    ) -> Result<RenderOutputResult, RenderOutputError<GlesRenderer>> {
         let focus = self.get_focus();
-        self.shell.workspaces.render_elements(
+        let elements = self.shell.workspaces.render_elements(
             backend,
             damage_tracker,
             focus.as_ref(),
             &self.config,
         );
 
-        // let res = damage_tracker.render_output(backend.renderer(), age, &elements, CLEAR_COLOR);
-
-        // res
+        backend.bind().unwrap();
+        self.shell
+            .workspaces
+            .change_output_transform(smithay::utils::Transform::Flipped180);
+        let res = damage_tracker.render_output(backend.renderer(), age, &elements, CLEAR_COLOR);
+        self.shell
+            .workspaces
+            .change_output_transform(smithay::utils::Transform::Normal);
+        res
     }
 }
 
 pub struct OutlineShader;
 
 impl OutlineShader {
-    pub fn element(
-        renderer: &mut GlesRenderer,
-        color: [f32; 3],
-        mut geometry: Rectangle<i32, Logical>,
-        radius: u8,
-        thickness: u8,
-    ) -> PixelShaderElement {
-        let shader = {
-            let src = OUTLINE_SHADER;
-            let additional_uniforms = &[
-                UniformName::new("color", UniformType::_3f),
-                UniformName::new("thickness", UniformType::_1f),
-                UniformName::new("radius", UniformType::_1f),
-            ];
-            renderer
-                .compile_custom_pixel_shader(src, additional_uniforms)
-                .unwrap()
-        };
-        let area = {
-            let t = thickness as i32;
-            geometry.loc -= (t, t).into();
-            geometry.size += (t * 2, t * 2).into();
-            geometry
-        };
-        let opaque_regions = None;
-        let alpha = 1.0;
-        let additional_uniforms = vec![
-            Uniform::new(
-                "color",
-                [color[0] * alpha, color[1] * alpha, color[2] * alpha],
-            ),
-            Uniform::new("thickness", thickness as f32),
-            Uniform::new("radius", radius as f32),
+    pub fn program(renderer: &mut GlesRenderer) -> GlesTexProgram {
+        let src = OUTLINE_SHADER;
+        let additional_uniforms = &[
+            UniformName::new("color", UniformType::_3f),
+            UniformName::new("thickness", UniformType::_1f),
+            UniformName::new("radius", UniformType::_1f),
+            UniformName::new("size", UniformType::_2f),
         ];
-        let mut element =
-            PixelShaderElement::new(shader, area, opaque_regions, alpha, additional_uniforms);
-        element.resize(geometry, None);
-        element
+        renderer
+            .compile_custom_texture_shader(src, additional_uniforms)
+            .unwrap()
     }
 }
 
 render_elements! {
     pub OutputRenderElement<=GlesRenderer>;
     Window = WaylandSurfaceRenderElement<GlesRenderer>,
-    Outline = PixelShaderElement,
+    RoundedWindow = RoundedElement,
+}
+
+pub struct RoundedElement {
+    color: [f32; 3],
+    commit_counter: CommitCounter,
+    geometry: Rectangle<i32, Logical>,
+    id: Id,
+    program: GlesTexProgram,
+    radius: f32,
+    texture: GlesTexture,
+    thickness: f32,
+}
+
+impl RoundedElement {
+    pub fn new(
+        color: [f32; 3],
+        geometry: Rectangle<i32, Logical>,
+        program: GlesTexProgram,
+        radius: f32,
+        texture: GlesTexture,
+        thickness: f32,
+    ) -> Self {
+        Self {
+            color,
+            commit_counter: CommitCounter::default(),
+            geometry,
+            id: Id::new(),
+            program,
+            radius,
+            texture,
+            thickness,
+        }
+    }
+}
+
+impl Element for RoundedElement {
+    fn id(&self) -> &Id {
+        &self.id
+    }
+
+    fn current_commit(&self) -> smithay::backend::renderer::utils::CommitCounter {
+        self.commit_counter
+    }
+
+    fn src(&self) -> Rectangle<f64, smithay::utils::Buffer> {
+        let scale = 1.0;
+        self.geometry
+            .to_f64()
+            .to_buffer(scale, Transform::Normal, &self.geometry.size.to_f64())
+    }
+
+    fn geometry(
+        &self,
+        scale: smithay::utils::Scale<f64>,
+    ) -> Rectangle<i32, smithay::utils::Physical> {
+        self.geometry.to_f64().to_physical_precise_round(scale)
+    }
+}
+
+impl RenderElement<GlesRenderer> for RoundedElement {
+    fn draw(
+        &self,
+        frame: &mut GlesFrame<'_>,
+        src: Rectangle<f64, smithay::utils::Buffer>,
+        dst: Rectangle<i32, smithay::utils::Physical>,
+        damage: &[Rectangle<i32, smithay::utils::Physical>],
+    ) -> Result<(), GlesError> {
+        let program = Some(&self.program);
+        let additional_uniforms = vec![
+            Uniform::new("color", self.color),
+            Uniform::new("thickness", self.thickness),
+            Uniform::new("radius", self.radius),
+            Uniform::new("size", (dst.size.w as f32, dst.size.h as f32)),
+        ];
+        frame.render_texture_from_to(
+            &self.texture,
+            src,
+            dst,
+            damage,
+            smithay::utils::Transform::Normal,
+            1.0,
+            program,
+            &additional_uniforms,
+        )
+    }
 }

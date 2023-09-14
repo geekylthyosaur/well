@@ -1,11 +1,11 @@
-use std::{ffi::CStr, time::Duration};
+use std::time::Duration;
 
 use smithay::{
     backend::{
         renderer::{
             damage::OutputDamageTracker,
             element::{surface::WaylandSurfaceRenderElement, AsRenderElements},
-            gles::{ffi, GlesRenderer, GlesTexture},
+            gles::{GlesRenderer, GlesTexture},
             Bind, Offscreen,
         },
         winit::WinitGraphicsBackend,
@@ -17,7 +17,7 @@ use smithay::{
 
 use crate::{
     config::Config,
-    render::{OutlineShader, OutputRenderElement, CLEAR_COLOR},
+    render::{OutlineShader, OutputRenderElement, RoundedElement, CLEAR_COLOR},
 };
 
 use self::workspace::Workspace;
@@ -100,7 +100,7 @@ impl Workspaces {
         }
     }
 
-    pub fn _change_output_transform(&self, new_transform: Transform) {
+    pub fn change_output_transform(&self, new_transform: Transform) {
         if let Some(output) = self.output.as_ref() {
             output.change_current_state(None, Some(new_transform), None, None);
         }
@@ -140,17 +140,21 @@ impl Workspaces {
         focus: Option<&Window>,
         config: &Config,
     ) -> Vec<OutputRenderElement> {
-        let elements = vec![];
+        let mut elements = vec![];
         if let Some(output) = self.output.as_ref() {
             let space = &self.current().space;
             let scale = output.current_scale().fractional_scale();
             let alpha = 1.0;
 
-            for e in space.elements() {
-                let location = space.element_location(e).unwrap_or_default();
-                let thickness = config.outline.thickness;
+            for e in space.elements().rev() {
+                let geometry = space.element_geometry(e).unwrap_or_default();
 
-                let location = (location - e.geometry().loc).to_physical_precise_round(scale);
+                let size = geometry.size.to_buffer(scale as i32, Transform::Flipped180);
+                if size.w == 0 || size.h == 0 {
+                    continue;
+                }
+
+                let location = (geometry.loc - e.geometry().loc).to_physical_precise_round(scale);
                 let window_elements = e
                     .render_elements::<WaylandSurfaceRenderElement<GlesRenderer>>(
                         backend.renderer(),
@@ -159,75 +163,33 @@ impl Workspaces {
                         alpha,
                     )
                     .into_iter()
-                    .map(OutputRenderElement::from)
                     .collect::<Vec<_>>();
 
-                let size = space.element_geometry(e).unwrap();
+                let texture = Offscreen::<GlesTexture>::create_buffer(
+                    backend.renderer(),
+                    smithay::backend::allocator::Fourcc::Argb8888,
+                    size,
+                )
+                .unwrap();
+                backend.renderer().bind(texture.clone()).unwrap();
 
-                let size = size.size.to_buffer(scale as i32, Transform::Normal);
-                if size.w != 0 || size.h != 0 {
-                    let texture = Offscreen::<GlesTexture>::create_buffer(
-                        backend.renderer(),
-                        smithay::backend::allocator::Fourcc::Argb8888,
-                        size,
-                    )
+                damage_tracker
+                    .render_output(backend.renderer(), 0, &window_elements, CLEAR_COLOR)
                     .unwrap();
-                    let tex_id = texture.tex_id();
-                    // Clone is necessary to keep tex_id valid
-                    backend.renderer().bind(texture.clone()).unwrap();
 
-                    damage_tracker
-                        .render_output(backend.renderer(), 0, &window_elements, CLEAR_COLOR)
-                        .unwrap();
+                let renderer = backend.renderer();
+                let location = space.element_location(e).unwrap_or_default();
+                let color = focus
+                    .and_then(|focus| focus.eq(e).then_some(config.outline.focus_color))
+                    .unwrap_or(config.outline.color);
+                let geometry = Rectangle::from_loc_and_size(location, e.geometry().size);
+                let radius = config.outline.radius as f32;
+                let thickness = config.outline.thickness as f32;
 
-                    backend.bind().unwrap();
-
-                    let renderer = backend.renderer();
-                    let location = space.element_location(e).unwrap_or_default();
-                    let color = focus
-                        .and_then(|focus| focus.eq(e).then_some(config.outline.focus_color))
-                        .unwrap_or(config.outline.color);
-                    let geometry = Rectangle::from_loc_and_size(location, e.geometry().size);
-                    let radius = 10;
-
-                    let shader_element =
-                        OutlineShader::element(renderer, color, geometry, radius, thickness);
-                    let elements = vec![OutputRenderElement::Outline(shader_element)];
-
-                    renderer
-                        .with_context(|gl| unsafe {
-                            let mut program = 0;
-                            gl.GetIntegerv(ffi::CURRENT_PROGRAM, &mut program);
-                            let program: u32 = std::mem::transmute(program);
-                            gl.ActiveTexture(ffi::TEXTURE0);
-                            gl.BindTexture(ffi::TEXTURE_2D, tex_id);
-                            gl.TexParameteri(
-                                ffi::TEXTURE_2D,
-                                ffi::TEXTURE_MIN_FILTER,
-                                ffi::NEAREST as i32,
-                            );
-                            gl.TexParameteri(
-                                ffi::TEXTURE_2D,
-                                ffi::TEXTURE_MAG_FILTER,
-                                ffi::NEAREST as i32,
-                            );
-                            let location = gl.GetUniformLocation(
-                                program,
-                                CStr::from_bytes_with_nul(b"tex\0").unwrap().as_ptr()
-                                    as *const ffi::types::GLchar,
-                            );
-                            gl.Uniform1i(location, 0);
-                        })
-                        .unwrap();
-
-                    self._change_output_transform(Transform::Flipped180);
-
-                    damage_tracker
-                        .render_output(renderer, 0, &elements, CLEAR_COLOR)
-                        .unwrap();
-
-                    self._change_output_transform(Transform::Normal);
-                }
+                let program = OutlineShader::program(renderer);
+                let element =
+                    RoundedElement::new(color, geometry, program, radius, texture, thickness);
+                elements.push(OutputRenderElement::RoundedWindow(element));
             }
         }
         elements
