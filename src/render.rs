@@ -12,7 +12,7 @@ use smithay::{
         winit::WinitGraphicsBackend,
     },
     render_elements,
-    utils::{Logical, Rectangle, Transform},
+    utils::{Buffer, Logical, Physical, Rectangle, Scale, Transform},
 };
 
 use crate::state::State;
@@ -109,21 +109,24 @@ impl Element for RoundedElement {
         &self.id
     }
 
-    fn current_commit(&self) -> smithay::backend::renderer::utils::CommitCounter {
+    fn current_commit(&self) -> CommitCounter {
         self.commit_counter
     }
 
-    fn src(&self) -> Rectangle<f64, smithay::utils::Buffer> {
+    fn src(&self) -> Rectangle<f64, Buffer> {
         let scale = 1.0;
-        self.geometry
-            .to_f64()
-            .to_buffer(scale, Transform::Normal, &self.geometry.size.to_f64())
+        let mut src = self.geometry.to_f64().to_buffer(
+            scale,
+            Transform::Normal,
+            &self.geometry.size.to_f64(),
+        );
+        src.loc.x -= self.geometry.loc.x as f64;
+        src.loc.y -= self.geometry.loc.y as f64;
+
+        src
     }
 
-    fn geometry(
-        &self,
-        scale: smithay::utils::Scale<f64>,
-    ) -> Rectangle<i32, smithay::utils::Physical> {
+    fn geometry(&self, scale: Scale<f64>) -> Rectangle<i32, Physical> {
         self.geometry.to_f64().to_physical_precise_round(scale)
     }
 }
@@ -132,9 +135,9 @@ impl RenderElement<GlesRenderer> for RoundedElement {
     fn draw(
         &self,
         frame: &mut GlesFrame<'_>,
-        mut src: Rectangle<f64, smithay::utils::Buffer>,
-        dst: Rectangle<i32, smithay::utils::Physical>,
-        damage: &[Rectangle<i32, smithay::utils::Physical>],
+        src: Rectangle<f64, Buffer>,
+        dst: Rectangle<i32, Physical>,
+        damage: &[Rectangle<i32, Physical>],
     ) -> Result<(), GlesError> {
         let program = Some(&self.program);
 
@@ -144,14 +147,13 @@ impl RenderElement<GlesRenderer> for RoundedElement {
             Uniform::new("radius", self.radius),
             Uniform::new("size", (dst.size.w as f32, dst.size.h as f32)),
         ];
-        src.loc.x -= self.geometry.loc.x as f64;
-        src.loc.y -= self.geometry.loc.y as f64;
+
         frame.render_texture_from_to(
             &self.texture,
             src,
             dst,
             damage,
-            smithay::utils::Transform::Normal,
+            Transform::Normal,
             1.0,
             program,
             &additional_uniforms,

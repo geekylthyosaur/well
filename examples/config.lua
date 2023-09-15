@@ -24,7 +24,8 @@ return {
   outline = {
     color = {0.5, 0.5, 0.5},
     focused_color = {0.5, 0.5, 1.0},
-    radius = 10,
-    thickness = 0,
+    radius = 20,
+    -- FIXME large values are drawn inside window
+    thickness = 5,
   },
 }

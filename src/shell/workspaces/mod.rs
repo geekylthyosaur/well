@@ -147,13 +147,14 @@ impl Workspaces {
             let alpha = 1.0;
 
             for e in space.elements().rev() {
-                let geometry = space.element_geometry(e).unwrap_or_default();
+                let mut geometry = space.element_geometry(e).unwrap_or_default();
 
                 let size = geometry.size.to_buffer(scale as i32, Transform::Flipped180);
                 if size.w == 0 || size.h == 0 {
                     continue;
                 }
 
+                // FIXME: output loc - loc
                 let location =
                     (Point::from((0, 0)) - e.geometry().loc).to_physical_precise_round(scale);
                 let window_elements = e
@@ -186,6 +187,9 @@ impl Workspaces {
                 let thickness = config.outline.thickness as f32;
 
                 let program = OutlineShader::program(renderer);
+                let t = thickness as i32;
+                geometry.size += (t * 2, t * 2).into();
+                geometry.loc -= (t, t).into();
                 let element =
                     RoundedElement::new(color, geometry, program, radius, texture, thickness);
                 elements.push(OutputRenderElement::RoundedWindow(element));

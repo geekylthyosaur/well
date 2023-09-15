@@ -21,21 +21,32 @@ float rounded_box(vec2 center, vec2 size, float radius) {
 }
 
 void main() {
-    // Border is not supported yet
-    float thickness = 0.0;
     vec2 center = size / 2.0;
-    vec2 location = v_coords * size;
+    vec4 mixColor;
 
-    float distance = rounded_box(location - center, (size / 2.0) - (thickness / 2.0), radius);
-    float smoothedAlpha = 1.0 - smoothstep(0.0, 1.0, abs(distance) - (thickness / 2.0));
+    vec2 windowSize = size;
+    vec2 outlineSize = size + thickness * 2.0;
+    vec2 windowCoords = v_coords;
+    windowCoords *= windowSize;
+    windowCoords -= thickness;
+    windowCoords /= windowSize;
     
-    // Discard pixels outside the rounded rectangle
-    if (distance > 0.0) {
-        discard;
+    vec2 windowLocation = windowCoords * windowSize;
+    float windowDistance = rounded_box(windowLocation - center, windowSize / 2.0, radius);
+    float smoothedAlpha = 1.0 - smoothstep(0.0, 1.0, abs(windowDistance) - (thickness / 2.0));
+    
+    if (windowDistance > 0.0) {
+        vec2 outlineLocation = v_coords * outlineSize;
+        float outlineDistance = rounded_box(windowLocation - center, outlineSize / 2.0, radius);
+
+        if (outlineDistance > 0.0) {
+            discard;
+        } else {
+            mixColor = mix(vec4(0.0, 0.0, 0.0, 0.0), vec4(color, alpha), smoothedAlpha);
+        }
+    } else {
+        vec4 windowColor = texture2D(tex, windowCoords);
+        mixColor = mix(windowColor, vec4(color, alpha), smoothedAlpha);
     }
-
-    vec4 windowColor = texture2D(tex, v_coords);
-    vec4 mixColor = mix(windowColor, vec4(color, alpha), smoothedAlpha);
-    
     gl_FragColor = mixColor;
 }
