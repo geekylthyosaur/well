@@ -181,7 +181,7 @@ impl Workspaces {
 
                 let renderer = backend.renderer();
                 let color = focus
-                    .and_then(|focus| focus.eq(e).then_some(config.outline.focus_color))
+                    .and_then(|focus| focus.eq(e).then_some(config.outline.focused_color))
                     .unwrap_or(config.outline.color);
                 let radius = config.outline.radius as f32;
                 let thickness = config.outline.thickness as f32;

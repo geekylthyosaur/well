@@ -88,7 +88,7 @@ pub struct Outline {
     #[serde(default = "default_outline_color")]
     pub color: [f32; 3],
     #[serde(default = "default_outline_focus_color")]
-    pub focus_color: [f32; 3],
+    pub focused_color: [f32; 3],
     #[serde(default = "default_outline_radius")]
     pub radius: usize,
     #[serde(default = "default_outline_thickness")]
@@ -228,7 +228,7 @@ fn default_outline_focus_color() -> [f32; 3] {
 }
 
 fn default_outline_radius() -> usize {
-    10
+    24
 }
 
 fn default_outline_thickness() -> usize {
