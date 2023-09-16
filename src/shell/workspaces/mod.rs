@@ -143,25 +143,29 @@ impl Workspaces {
         let mut elements = vec![];
         if let Some(output) = self.output.as_ref() {
             let space = &self.current().space;
-            let scale = output.current_scale().fractional_scale();
+            let output_scale = output.current_scale().fractional_scale();
+            let output_geometry = self.output_geometry().unwrap();
             let alpha = 1.0;
 
             for e in space.elements().rev() {
                 let mut geometry = space.element_geometry(e).unwrap_or_default();
 
-                let size = geometry.size.to_buffer(scale as i32, Transform::Flipped180);
+                let size = geometry
+                    .size
+                    .to_buffer(output_scale as i32, Transform::Normal);
                 if size.w == 0 || size.h == 0 {
                     continue;
                 }
 
-                // FIXME: output loc - loc
-                let location =
-                    (Point::from((0, 0)) - e.geometry().loc).to_physical_precise_round(scale);
+                // TODO: wtf
+                let location = (Point::from((0, output_geometry.size.h - e.geometry().size.h))
+                    - e.geometry().loc)
+                    .to_physical_precise_round(output_scale);
                 let window_elements = e
                     .render_elements::<WaylandSurfaceRenderElement<GlesRenderer>>(
                         backend.renderer(),
                         location,
-                        scale.into(),
+                        output_scale.into(),
                         alpha,
                     )
                     .into_iter()

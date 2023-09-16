@@ -37,13 +37,7 @@ impl State {
         );
 
         backend.bind().unwrap();
-        self.shell
-            .workspaces
-            .change_output_transform(smithay::utils::Transform::Flipped180);
         let res = damage_tracker.render_output(backend.renderer(), age, &elements, CLEAR_COLOR);
-        self.shell
-            .workspaces
-            .change_output_transform(smithay::utils::Transform::Normal);
         res
     }
 }
@@ -153,7 +147,7 @@ impl RenderElement<GlesRenderer> for RoundedElement {
             src,
             dst,
             damage,
-            Transform::Normal,
+            Transform::Flipped180,
             1.0,
             program,
             &additional_uniforms,
