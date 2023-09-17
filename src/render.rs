@@ -45,7 +45,7 @@ impl State {
 pub struct OutlineShader;
 
 impl OutlineShader {
-    pub fn program(renderer: &mut GlesRenderer) -> GlesTexProgram {
+    pub fn compile(renderer: &mut GlesRenderer) {
         let src = OUTLINE_SHADER;
         let additional_uniforms = &[
             UniformName::new("color", UniformType::_3f),
@@ -53,9 +53,17 @@ impl OutlineShader {
             UniformName::new("radius", UniformType::_1f),
             UniformName::new("size", UniformType::_2f),
         ];
-        renderer
+        let program = renderer
             .compile_custom_texture_shader(src, additional_uniforms)
-            .unwrap()
+            .unwrap();
+        renderer
+            .egl_context()
+            .user_data()
+            .insert_if_missing(|| program);
+    }
+
+    pub fn program(renderer: &mut GlesRenderer) -> GlesTexProgram {
+        renderer.egl_context().user_data().get().cloned().unwrap()
     }
 }
 

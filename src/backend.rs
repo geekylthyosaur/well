@@ -11,7 +11,10 @@ use smithay::{
     utils::Transform,
 };
 
-use crate::state::{CalloopData, State};
+use crate::{
+    render::OutlineShader,
+    state::{CalloopData, State},
+};
 
 pub struct WinitBackend {
     backend: WinitGraphicsBackend<GlesRenderer>,
@@ -24,7 +27,8 @@ impl WinitBackend {
         let display = &data.display;
         let state = &mut data.state;
 
-        let (backend, winit) = winit::init::<GlesRenderer>().expect("Failed to initialize backend");
+        let (mut backend, winit) =
+            winit::init::<GlesRenderer>().expect("Failed to initialize backend");
 
         let mode = Mode {
             size: backend.window_size().physical_size,
@@ -52,6 +56,8 @@ impl WinitBackend {
         state.shell.workspaces.map_output(&output);
 
         let damage_tracker = OutputDamageTracker::from_output(&output);
+
+        OutlineShader::compile(backend.renderer());
 
         Self {
             backend,

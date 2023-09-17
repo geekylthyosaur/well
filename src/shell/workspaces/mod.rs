@@ -100,7 +100,7 @@ impl Workspaces {
         }
     }
 
-    pub fn change_output_transform(&self, new_transform: Transform) {
+    pub fn _change_output_transform(&self, new_transform: Transform) {
         if let Some(output) = self.output.as_ref() {
             output.change_current_state(None, Some(new_transform), None, None);
         }
