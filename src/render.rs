@@ -122,8 +122,8 @@ impl Element for RoundedElement {
             Transform::Normal,
             &self.geometry.size.to_f64(),
         );
-        src.loc.x -= self.geometry.loc.x as f64;
-        src.loc.y -= self.geometry.loc.y as f64;
+        src.loc.x = 0.0;
+        src.loc.y = 0.0;
 
         src
     }

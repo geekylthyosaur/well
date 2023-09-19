@@ -2,15 +2,16 @@ use std::time::Duration;
 
 use smithay::{
     backend::{
+        allocator::Fourcc,
         renderer::{
             damage::OutputDamageTracker,
-            element::{surface::WaylandSurfaceRenderElement, AsRenderElements},
+            element::surface::render_elements_from_surface_tree,
             gles::{GlesRenderer, GlesTexture},
             Bind, Offscreen,
         },
         winit::WinitGraphicsBackend,
     },
-    desktop::Window,
+    desktop::{PopupManager, Window},
     output::{Mode, Output, Scale},
     utils::{Logical, Point, Rectangle, Transform},
 };
@@ -146,6 +147,7 @@ impl Workspaces {
             let output_scale = output.current_scale().fractional_scale();
             let output_geometry = self.output_geometry().unwrap();
             let alpha = 1.0;
+            let scale = 1.0;
 
             for e in space.elements().rev() {
                 let mut geometry = space.element_geometry(e).unwrap_or_default();
@@ -157,27 +159,54 @@ impl Workspaces {
                     continue;
                 }
 
-                // TODO: wtf
-                let location = (Point::from((0, output_geometry.size.h - e.geometry().size.h))
-                    - e.geometry().loc)
-                    .to_physical_precise_round(output_scale);
-                let window_elements = e
-                    .render_elements::<WaylandSurfaceRenderElement<GlesRenderer>>(
-                        backend.renderer(),
-                        location,
-                        output_scale.into(),
-                        alpha,
-                    )
-                    .into_iter()
-                    .collect::<Vec<_>>();
+                let (window_elements, popup_elements) = {
+                    let surface = e.toplevel().wl_surface();
+                    let renderer = backend.renderer();
 
+                    // TODO: wtf
+                    let window_location =
+                        Point::from((0, output_geometry.size.h - e.geometry().size.h))
+                            - e.geometry().loc.to_physical_precise_round(output_scale);
+                    let popups_location = (space.element_location(e).unwrap() - e.geometry().loc)
+                        .to_physical_precise_round(output_scale);
+
+                    let popup_render_elements: Vec<OutputRenderElement> =
+                        PopupManager::popups_for_surface(surface)
+                            .flat_map(|(popup, popup_offset)| {
+                                let offset = (e.geometry().loc + popup_offset
+                                    - popup.geometry().loc)
+                                    .to_physical_precise_round(scale);
+
+                                render_elements_from_surface_tree(
+                                    renderer,
+                                    popup.wl_surface(),
+                                    popups_location + offset,
+                                    scale,
+                                    alpha,
+                                )
+                            })
+                            .collect();
+
+                    let window_render_elements: Vec<OutputRenderElement> =
+                        render_elements_from_surface_tree(
+                            renderer,
+                            surface,
+                            window_location,
+                            scale,
+                            alpha,
+                        );
+
+                    (window_render_elements, popup_render_elements)
+                };
                 let texture = Offscreen::<GlesTexture>::create_buffer(
                     backend.renderer(),
-                    smithay::backend::allocator::Fourcc::Argb8888,
+                    Fourcc::Argb8888,
                     size,
                 )
                 .unwrap();
                 backend.renderer().bind(texture.clone()).unwrap();
+
+                elements.extend(popup_elements);
 
                 damage_tracker
                     .render_output(backend.renderer(), 0, &window_elements, CLEAR_COLOR)
