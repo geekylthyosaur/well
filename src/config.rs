@@ -51,7 +51,7 @@ impl Config {
             Self::default()
         };
 
-        debug!(?config);
+        debug!("{:#?}", config);
 
         Ok(config)
     }
