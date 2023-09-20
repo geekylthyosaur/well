@@ -10,8 +10,7 @@ pub fn init() {
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new(level))
         .add_directive(Directive::from_str("calloop=error").unwrap())
-        .add_directive(Directive::from_str(&format!("smithay={level}")).unwrap())
-        .add_directive(Directive::from_str(&format!("{PKG_NAME}={level}")).unwrap());
+        .add_directive(Directive::from_str(&format!("smithay={level}")).unwrap());
     let fmt_layer = tracing_subscriber::fmt::layer().compact();
     tracing_subscriber::registry()
         .with(fmt_layer)
@@ -25,5 +24,8 @@ pub fn init() {
             .install_panic_hook()
     }
 
-    info!("{PKG_NAME} {PKG_VERSION}");
+    info!(
+        "{PKG_NAME} {} {PKG_VERSION}",
+        if cfg!(debug_assertions) { "debug" } else { "release" }
+    );
 }

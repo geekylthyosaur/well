@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Error as IoError, path::Path};
+use std::{collections::HashMap, io::Error as IoError, path::Path, str::FromStr};
 
 use anyhow::Result;
 use mlua::{Error as LuaError, Lua, LuaSerdeExt};
@@ -8,47 +8,57 @@ use tracing::{debug, error, info, warn};
 
 use crate::PKG_NAME;
 
-#[derive(Debug, Default, Deserialize)]
+const DEFAULT_CONFIG: &str = include_str!("../examples/config.lua");
+
+#[derive(Debug, Deserialize)]
 pub struct Config {
     pub bindings: Bindings,
     #[serde(default = "default_workspace_count")]
     pub workspace_count: usize,
+    #[serde(alias = "border")]
     pub outline: Outline,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        warn!("Using default configuration");
+        Config::from_str(DEFAULT_CONFIG).expect("Default config contains errors")
+    }
 }
 
 impl mlua::UserData for Config {}
 
 impl Config {
     pub fn load() -> Result<Self> {
-        let path = if cfg!(debug_assertions) {
-            std::env::current_dir().ok().map(|mut cwd| {
-                cwd.push("examples/config.lua");
-                cwd
-            })
-        } else {
+        let config = if let Some(path) = {
             let xdg = xdg::BaseDirectories::new().ok();
-
             xdg.and_then(|base| {
                 base.find_config_file(format!("{PKG_NAME}/config.lua"))
                     .or_else(|| base.find_config_file(format!("{PKG_NAME}.lua")))
             })
-        };
-
-        let config = if let Some(path) = path {
-            info!(?path, "Trying to load configuration file");
-
-            match Self::try_from(path.as_path()) {
+        } {
+            match Config::try_from(path.as_path()) {
                 Ok(cfg) => cfg,
                 Err(Error::Io(err)) => {
                     error!(?err, "Failed to load configuration file");
-                    warn!("Using default configuration");
                     Self::default()
                 }
-                Err(Error::Lua(err)) => anyhow::bail!("Failed to parse configuration file: {err}"),
+                Err(Error::Lua(err)) => {
+                    anyhow::bail!("Failed to parse configuration file: {err}");
+                }
             }
-        } else {
-            warn!("Using default configuration");
+        } else if cfg!(debug_assertions) {
             Self::default()
+        } else {
+            let xdg = xdg::BaseDirectories::new().ok();
+            if let Some(path) = xdg.and_then(|base| base.create_config_directory(PKG_NAME).ok()) {
+                let path = path.join("config.lua");
+                info!(?path, "Writing default configuration");
+                std::fs::write(path.as_path(), DEFAULT_CONFIG)?;
+                Self::try_from(path.as_path())?
+            } else {
+                Self::default()
+            }
         };
 
         debug!("{:#?}", config);
@@ -57,15 +67,24 @@ impl Config {
     }
 }
 
+impl FromStr for Config {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let lua = Lua::new();
+
+        let value = lua.load(s).eval()?;
+        Ok(lua.from_value(value)?)
+    }
+}
+
 impl TryFrom<&Path> for Config {
     type Error = Error;
 
-    fn try_from(path: &Path) -> std::result::Result<Self, Self::Error> {
-        let file = std::fs::read_to_string(path)?;
-        let lua = Lua::new();
-
-        let config = lua.from_value(lua.load(file).eval()?)?;
-
+    fn try_from(path: &Path) -> Result<Self, Self::Error> {
+        info!(?path, "Trying to load configuration file");
+        let s = std::fs::read_to_string(path)?;
+        let config = Config::from_str(&s)?;
         Ok(config)
     }
 }
