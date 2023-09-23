@@ -10,6 +10,8 @@ use crate::PKG_NAME;
 
 const DEFAULT_CONFIG: &str = include_str!("../examples/config.lua");
 
+pub type Color = [f32; 3];
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub bindings: Bindings,
@@ -104,10 +106,16 @@ impl Bindings {
 
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct Outline {
-    #[serde(default = "default_outline_color")]
-    pub color: [f32; 3],
-    #[serde(default = "default_outline_focus_color")]
-    pub focused_color: [f32; 3],
+    #[serde(
+        deserialize_with = "deserialize_Color",
+        default = "default_outline_color"
+    )]
+    pub color: Color,
+    #[serde(
+        deserialize_with = "deserialize_Color",
+        default = "default_outline_focus_color"
+    )]
+    pub focused_color: Color,
     #[serde(default = "default_outline_radius")]
     pub radius: usize,
     #[serde(default = "default_outline_thickness")]
@@ -217,6 +225,15 @@ where
     }
 }
 
+#[allow(non_snake_case)]
+fn deserialize_Color<'de, D>(deserializer: D) -> Result<Color, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    // TODO: other formats
+    <[f32; 3]>::deserialize(deserializer)
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
@@ -238,11 +255,11 @@ fn default_workspace_count() -> usize {
     9
 }
 
-fn default_outline_color() -> [f32; 3] {
+fn default_outline_color() -> Color {
     [0.3, 0.3, 0.3]
 }
 
-fn default_outline_focus_color() -> [f32; 3] {
+fn default_outline_focus_color() -> Color {
     [0.5, 0.5, 1.0]
 }
 

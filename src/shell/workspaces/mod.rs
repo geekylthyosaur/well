@@ -1,15 +1,10 @@
 use std::time::Duration;
 
+use anyhow::Result;
 use smithay::{
-    backend::{
-        allocator::Fourcc,
-        renderer::{
-            damage::OutputDamageTracker,
-            element::surface::render_elements_from_surface_tree,
-            gles::{GlesRenderer, GlesTexture},
-            Bind, Offscreen,
-        },
-        winit::WinitGraphicsBackend,
+    backend::renderer::{
+        damage::OutputDamageTracker, element::surface::render_elements_from_surface_tree,
+        gles::GlesRenderer,
     },
     desktop::{PopupManager, Window},
     output::{Mode, Output, Scale},
@@ -18,7 +13,11 @@ use smithay::{
 
 use crate::{
     config::Config,
-    render::{OutlineShader, OutputRenderElement, RoundedElement, CLEAR_COLOR},
+    render::{
+        element::{OutputRenderElement, RoundedElement},
+        render_offscreen,
+        shader::OutlineShader,
+    },
 };
 
 use self::workspace::Workspace;
@@ -136,11 +135,11 @@ impl Workspaces {
 
     pub fn render_elements(
         &self,
-        backend: &mut WinitGraphicsBackend<GlesRenderer>,
+        renderer: &mut GlesRenderer,
         damage_tracker: &mut OutputDamageTracker,
         focus: Option<&Window>,
         config: &Config,
-    ) -> Vec<OutputRenderElement> {
+    ) -> Result<Vec<OutputRenderElement>> {
         let mut elements = vec![];
         if let Some(output) = self.output.as_ref() {
             let space = &self.current().space;
@@ -161,7 +160,6 @@ impl Workspaces {
 
                 let (window_elements, popup_elements) = {
                     let surface = e.toplevel().wl_surface();
-                    let renderer = backend.renderer();
 
                     // TODO: wtf
                     let window_location =
@@ -198,37 +196,29 @@ impl Workspaces {
 
                     (window_render_elements, popup_render_elements)
                 };
-                let texture = Offscreen::<GlesTexture>::create_buffer(
-                    backend.renderer(),
-                    Fourcc::Argb8888,
-                    size,
-                )
-                .unwrap();
-                backend.renderer().bind(texture.clone()).unwrap();
 
                 elements.extend(popup_elements);
 
-                damage_tracker
-                    .render_output(backend.renderer(), 0, &window_elements, CLEAR_COLOR)
-                    .unwrap();
+                if let Some(texture) =
+                    render_offscreen(renderer, damage_tracker, &window_elements, size)?
+                {
+                    let color = focus
+                        .and_then(|focus| focus.eq(e).then_some(config.outline.focused_color))
+                        .unwrap_or(config.outline.color);
+                    let radius = config.outline.radius as f32;
+                    let thickness = config.outline.thickness as f32;
 
-                let renderer = backend.renderer();
-                let color = focus
-                    .and_then(|focus| focus.eq(e).then_some(config.outline.focused_color))
-                    .unwrap_or(config.outline.color);
-                let radius = config.outline.radius as f32;
-                let thickness = config.outline.thickness as f32;
-
-                let program = OutlineShader::program(renderer);
-                let t = thickness as i32;
-                geometry.size += (t * 2, t * 2).into();
-                geometry.loc -= (t, t).into();
-                let element =
-                    RoundedElement::new(color, geometry, program, radius, texture, thickness);
-                elements.push(OutputRenderElement::RoundedWindow(element));
+                    let program = OutlineShader::program(renderer);
+                    let t = thickness as i32;
+                    geometry.size += (t * 2, t * 2).into();
+                    geometry.loc -= (t, t).into();
+                    let element =
+                        RoundedElement::new(color, geometry, program, radius, texture, thickness);
+                    elements.push(OutputRenderElement::RoundedWindow(element));
+                }
             }
         }
-        elements
+        Ok(elements)
     }
 
     pub fn send_frames(&self, time: Duration) {

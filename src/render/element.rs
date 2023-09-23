@@ -1,71 +1,15 @@
+use anyhow::Result;
 use smithay::{
-    backend::{
-        renderer::{
-            damage::{Error as RenderOutputError, OutputDamageTracker, RenderOutputResult},
-            element::{surface::WaylandSurfaceRenderElement, Element, Id, RenderElement},
-            gles::{
-                GlesError, GlesFrame, GlesRenderer, GlesTexProgram, GlesTexture, Uniform,
-                UniformName, UniformType,
-            },
-            utils::CommitCounter,
-        },
-        winit::WinitGraphicsBackend,
+    backend::renderer::{
+        element::{surface::WaylandSurfaceRenderElement, Element, Id, RenderElement},
+        gles::{GlesError, GlesFrame, GlesRenderer, GlesTexProgram, GlesTexture, Uniform},
+        utils::CommitCounter,
     },
     render_elements,
     utils::{Buffer, Logical, Physical, Rectangle, Scale, Transform},
 };
 
-use crate::state::State;
-
-pub const CLEAR_COLOR: [f32; 4] = [0.6, 0.6, 0.6, 1.0];
-
-pub static OUTLINE_SHADER: &str = include_str!("./shader.frag");
-
-impl State {
-    pub fn render_output(
-        &self,
-        backend: &mut WinitGraphicsBackend<GlesRenderer>,
-        age: usize,
-        damage_tracker: &mut OutputDamageTracker,
-    ) -> Result<RenderOutputResult, RenderOutputError<GlesRenderer>> {
-        let focus = self.get_focus();
-        let elements = self.shell.workspaces.render_elements(
-            backend,
-            damage_tracker,
-            focus.as_ref(),
-            &self.config,
-        );
-
-        backend.bind().unwrap();
-        let res = damage_tracker.render_output(backend.renderer(), age, &elements, CLEAR_COLOR);
-        res
-    }
-}
-
-pub struct OutlineShader;
-
-impl OutlineShader {
-    pub fn compile(renderer: &mut GlesRenderer) {
-        let src = OUTLINE_SHADER;
-        let additional_uniforms = &[
-            UniformName::new("color", UniformType::_3f),
-            UniformName::new("thickness", UniformType::_1f),
-            UniformName::new("radius", UniformType::_1f),
-            UniformName::new("size", UniformType::_2f),
-        ];
-        let program = renderer
-            .compile_custom_texture_shader(src, additional_uniforms)
-            .unwrap();
-        renderer
-            .egl_context()
-            .user_data()
-            .insert_if_missing(|| program);
-    }
-
-    pub fn program(renderer: &mut GlesRenderer) -> GlesTexProgram {
-        renderer.egl_context().user_data().get().cloned().unwrap()
-    }
-}
+use crate::config::Color;
 
 render_elements! {
     pub OutputRenderElement<=GlesRenderer>;
@@ -74,7 +18,7 @@ render_elements! {
 }
 
 pub struct RoundedElement {
-    color: [f32; 3],
+    color: Color,
     commit_counter: CommitCounter,
     geometry: Rectangle<i32, Logical>,
     id: Id,
@@ -86,7 +30,7 @@ pub struct RoundedElement {
 
 impl RoundedElement {
     pub fn new(
-        color: [f32; 3],
+        color: Color,
         geometry: Rectangle<i32, Logical>,
         program: GlesTexProgram,
         radius: f32,

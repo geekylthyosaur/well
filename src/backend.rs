@@ -12,7 +12,7 @@ use smithay::{
 };
 
 use crate::{
-    render::OutlineShader,
+    render::shader::OutlineShader,
     state::{CalloopData, State},
 };
 
