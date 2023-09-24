@@ -66,8 +66,8 @@ impl XdgShellHandler for State {
         // TODO Handle popup grab here
     }
 
-    fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
-        self.shell.workspaces.current_mut().unmap_toplevel(surface);
+    fn toplevel_destroyed(&mut self, _surface: ToplevelSurface) {
+        self.shell.workspaces.current_mut().refresh();
     }
 }
 

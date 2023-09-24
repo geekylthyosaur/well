@@ -18,6 +18,7 @@ impl Shell {
         Self { workspaces }
     }
 
+    // FIXME: self
     pub fn close(&mut self, window: Option<Window>) {
         if let Some(window) = window {
             window.toplevel().send_close();
@@ -40,15 +41,13 @@ impl Shell {
 
     pub fn switch_to(&mut self, new: usize) {
         assert!(new > 0, "Workspace number should be > 0");
-        let new = new - 1;
-        self.workspaces.switch_to(new);
+        self.workspaces.switch_to(new - 1);
     }
 
     pub fn move_to(&mut self, window: Option<Window>, new: usize) {
         assert!(new > 0, "Workspace number should be > 0");
-        let new = new - 1;
         if let Some(window) = window {
-            self.workspaces.move_to(window, new);
+            self.workspaces.move_to(window, new - 1);
         }
     }
 
