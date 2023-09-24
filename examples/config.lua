@@ -6,6 +6,7 @@ local workspace_count = 9
 local bindings = {}
 for _, super in ipairs(super_keys) do
   bindings[{modifiers = {super, "Shift"}, key = "Escape"}] = "Exit"
+  bindings[{modifiers = {super}, key = "q"}] = "Close"
   bindings[{modifiers = {super}, key = "Return"}] = {Spawn = term_cmd}
   bindings[{modifiers = {super}, key = "f"}] = "ToggleFullscreen"
 

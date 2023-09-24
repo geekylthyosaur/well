@@ -18,6 +18,14 @@ impl Shell {
         Self { workspaces }
     }
 
+    pub fn close(&mut self, window: Option<Window>) {
+        if let Some(window) = window {
+            self.workspaces.current_mut().space.unmap_elem(&window);
+            window.toplevel().send_close();
+        }
+    }
+
+    // FIXME: self
     pub fn spawn(&self, command: String) {
         std::thread::spawn(move || {
             let mut cmd = Command::new("/bin/sh");

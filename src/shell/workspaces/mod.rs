@@ -154,6 +154,7 @@ impl Workspaces {
                 let size = geometry
                     .size
                     .to_buffer(output_scale as i32, Transform::Normal);
+
                 if size.w == 0 || size.h == 0 {
                     continue;
                 }

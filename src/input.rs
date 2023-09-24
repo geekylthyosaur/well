@@ -127,7 +127,8 @@ impl State {
             time,
             |data, modifiers, handle| {
                 if state == KeyState::Pressed {
-                    let action = data.config.bindings.action(handle.raw_syms(), modifiers);
+                    let raw_syms = handle.raw_syms();
+                    let action = data.config.bindings.action(raw_syms, modifiers);
                     if let Some(action) = action.as_ref() {
                         debug!(?action);
                     }
@@ -144,6 +145,12 @@ impl State {
     fn process_action(&mut self, action: Option<Action>) -> Result<()> {
         match action {
             Some(Action::Exit) => self.is_running = false,
+            Some(Action::Close) => {
+                let window = self.get_focus();
+                self.shell.close(window);
+                let window = self.shell.workspaces.current().windows().next().cloned();
+                self.set_focus(window);
+            }
             Some(Action::Spawn(cmd)) => self.shell.spawn(cmd),
             Some(Action::SwitchToWorkspace(n)) => {
                 self.shell.switch_to(n);

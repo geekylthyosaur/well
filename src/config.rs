@@ -245,6 +245,7 @@ pub enum Error {
 #[derive(Debug, Clone, Deserialize)]
 pub enum Action {
     Exit,
+    Close,
     Spawn(String),
     SwitchToWorkspace(usize),
     MoveToWorkspace(usize),
