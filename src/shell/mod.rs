@@ -20,7 +20,6 @@ impl Shell {
 
     pub fn close(&mut self, window: Option<Window>) {
         if let Some(window) = window {
-            self.workspaces.current_mut().space.unmap_elem(&window);
             window.toplevel().send_close();
         }
     }

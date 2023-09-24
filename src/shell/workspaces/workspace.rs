@@ -3,6 +3,7 @@ use smithay::{
     output::Output,
     reexports::wayland_server::protocol::wl_surface::WlSurface,
     utils::{Logical, Point, Rectangle},
+    wayland::shell::xdg::ToplevelSurface,
 };
 
 #[derive(Default)]
@@ -22,6 +23,25 @@ impl Workspace {
 
     pub fn unmap_window(&mut self, window: &Window) {
         self.space.unmap_elem(window);
+    }
+
+    pub fn _map_toplevel(
+        &mut self,
+        surface: ToplevelSurface,
+        location: impl Into<Point<i32, Logical>>,
+        activate: bool,
+    ) {
+        let window = self.windows().find(|w| w.toplevel() == &surface);
+        if let Some(window) = window {
+            self.map_window(window.to_owned(), location, activate);
+        }
+    }
+
+    pub fn unmap_toplevel(&mut self, surface: ToplevelSurface) {
+        let window = self.windows().find(|w| w.toplevel() == &surface);
+        if let Some(window) = window {
+            self.unmap_window(&window.to_owned());
+        }
     }
 
     pub fn windows(&self) -> impl DoubleEndedIterator<Item = &Window> {

@@ -65,6 +65,10 @@ impl XdgShellHandler for State {
     fn grab(&mut self, _surface: PopupSurface, _seat: WlSeat, _serial: Serial) {
         // TODO Handle popup grab here
     }
+
+    fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
+        self.shell.workspaces.current_mut().unmap_toplevel(surface);
+    }
 }
 
 impl XdgDecorationHandler for State {
