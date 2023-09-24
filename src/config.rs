@@ -270,3 +270,13 @@ fn default_outline_radius() -> usize {
 fn default_outline_thickness() -> usize {
     5
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn eval_default_config_ok() {
+        assert!(Config::from_str(DEFAULT_CONFIG).is_ok());
+    }
+}
