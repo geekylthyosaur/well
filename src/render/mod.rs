@@ -12,9 +12,8 @@ use smithay::{
     utils::{Buffer, Size},
 };
 
-use crate::state::State;
-
 use self::element::OutputRenderElement;
+use crate::state::State;
 
 pub mod element;
 pub mod shader;

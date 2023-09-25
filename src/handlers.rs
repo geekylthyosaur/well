@@ -44,10 +44,7 @@ impl XdgShellHandler for State {
 
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         let window = Window::new(surface);
-        self.shell
-            .workspaces
-            .current_mut()
-            .map_window(window.clone(), (0, 0), true);
+        self.shell.workspaces.current_mut().map_window(window.clone(), (0, 0), true);
         self.set_focus(Some(window));
     }
 

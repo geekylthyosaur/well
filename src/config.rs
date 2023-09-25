@@ -106,15 +106,9 @@ impl Bindings {
 
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct Outline {
-    #[serde(
-        deserialize_with = "deserialize_Color",
-        default = "default_outline_color"
-    )]
+    #[serde(deserialize_with = "deserialize_Color", default = "default_outline_color")]
     pub color: Color,
-    #[serde(
-        deserialize_with = "deserialize_Color",
-        default = "default_outline_focus_color"
-    )]
+    #[serde(deserialize_with = "deserialize_Color", default = "default_outline_focus_color")]
     pub focused_color: Color,
     #[serde(default = "default_outline_radius")]
     pub radius: usize,
@@ -159,12 +153,7 @@ impl std::ops::AddAssign<KeyModifier> for KeyModifiers {
 
 impl From<ModifiersState> for KeyModifiers {
     fn from(s: ModifiersState) -> Self {
-        KeyModifiers {
-            ctrl: s.ctrl,
-            alt: s.alt,
-            shift: s.shift,
-            logo: s.logo,
-        }
+        KeyModifiers { ctrl: s.ctrl, alt: s.alt, shift: s.shift, logo: s.logo }
     }
 }
 
@@ -175,12 +164,7 @@ pub struct KeyModifiersDef(Vec<KeyModifier>);
 impl From<KeyModifiersDef> for KeyModifiers {
     fn from(src: KeyModifiersDef) -> Self {
         src.0.into_iter().fold(
-            KeyModifiers {
-                ctrl: false,
-                alt: false,
-                shift: false,
-                logo: false,
-            },
+            KeyModifiers { ctrl: false, alt: false, shift: false, logo: false },
             |mut modis, modi: KeyModifier| {
                 modis += modi;
                 modis

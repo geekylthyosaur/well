@@ -30,10 +30,7 @@ impl WinitBackend {
         let (mut backend, winit) =
             winit::init::<GlesRenderer>().expect("Failed to initialize backend");
 
-        let mode = Mode {
-            size: backend.window_size().physical_size,
-            refresh: 60_000,
-        };
+        let mode = Mode { size: backend.window_size().physical_size, refresh: 60_000 };
 
         let output = Output::new(
             "winit".to_string(),
@@ -59,21 +56,16 @@ impl WinitBackend {
 
         OutlineShader::compile(backend.renderer());
 
-        Self {
-            backend,
-            damage_tracker,
-            winit,
-        }
+        Self { backend, damage_tracker, winit }
     }
 
     pub fn dispatch(&mut self, data: &mut CalloopData) -> Result<()> {
         let state = &mut data.state;
 
         if let Err(WinitError::WindowClosed) = self.winit.dispatch_new_events(|event| match event {
-            WinitEvent::Resized { size, .. } => state.shell.workspaces.change_output_mode(Mode {
-                size,
-                refresh: 60_000,
-            }),
+            WinitEvent::Resized { size, .. } => {
+                state.shell.workspaces.change_output_mode(Mode { size, refresh: 60_000 })
+            }
             WinitEvent::Input(event) => state.handle_input(event),
             _ => (),
         }) {
@@ -90,10 +82,7 @@ impl WinitBackend {
             self.backend.submit(damage.as_deref())?;
         }
 
-        state
-            .shell
-            .workspaces
-            .send_frames(state.start_time.elapsed());
+        state.shell.workspaces.send_frames(state.start_time.elapsed());
 
         state.shell.workspaces.refresh();
 

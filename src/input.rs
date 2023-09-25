@@ -48,11 +48,7 @@ impl State {
                 pointer.motion(
                     self,
                     under,
-                    &MotionEvent {
-                        location: point,
-                        serial,
-                        time: event.time_msec(),
-                    },
+                    &MotionEvent { location: point, serial, time: event.time_msec() },
                 );
             }
             InputEvent::PointerButton { event, .. } => {
@@ -73,39 +69,23 @@ impl State {
                         .window_under(pointer.current_location())
                         .map(|(w, l)| (w.clone(), l))
                     {
-                        self.shell
-                            .workspaces
-                            .current_mut()
-                            .raise_window(&window, true);
+                        self.shell.workspaces.current_mut().raise_window(&window, true);
                         self.set_focus(Some(window));
-                        self.shell
-                            .workspaces
-                            .current()
-                            .windows()
-                            .for_each(|window| {
-                                window.toplevel().send_pending_configure();
-                            });
+                        self.shell.workspaces.current().windows().for_each(|window| {
+                            window.toplevel().send_pending_configure();
+                        });
                     } else {
-                        self.shell
-                            .workspaces
-                            .current()
-                            .windows()
-                            .for_each(|window| {
-                                window.set_activated(false);
-                                window.toplevel().send_pending_configure();
-                            });
+                        self.shell.workspaces.current().windows().for_each(|window| {
+                            window.set_activated(false);
+                            window.toplevel().send_pending_configure();
+                        });
                         keyboard.set_focus(self, Option::<WlSurface>::None, serial);
                     }
                 };
 
                 pointer.button(
                     self,
-                    &ButtonEvent {
-                        button,
-                        state: button_state,
-                        serial,
-                        time: event.time_msec(),
-                    },
+                    &ButtonEvent { button, state: button_state, serial, time: event.time_msec() },
                 );
             }
             _ => {}
@@ -119,27 +99,18 @@ impl State {
         let time = Event::time_msec(&event);
         let keyboard = self.seat.get_keyboard().unwrap();
 
-        keyboard.input(
-            self,
-            code,
-            state,
-            serial,
-            time,
-            |data, modifiers, handle| {
-                if state == KeyState::Pressed {
-                    let raw_syms = handle.raw_syms();
-                    let action = data.config.bindings.action(raw_syms, modifiers);
-                    if let Some(action) = action.as_ref() {
-                        debug!(?action);
-                    }
-                    action
-                        .map(FilterResult::Intercept)
-                        .unwrap_or(FilterResult::Forward)
-                } else {
-                    FilterResult::Forward
+        keyboard.input(self, code, state, serial, time, |data, modifiers, handle| {
+            if state == KeyState::Pressed {
+                let raw_syms = handle.raw_syms();
+                let action = data.config.bindings.action(raw_syms, modifiers);
+                if let Some(action) = action.as_ref() {
+                    debug!(?action);
                 }
-            },
-        )
+                action.map(FilterResult::Intercept).unwrap_or(FilterResult::Forward)
+            } else {
+                FilterResult::Forward
+            }
+        })
     }
 
     fn process_action(&mut self, action: Option<Action>) -> Result<()> {

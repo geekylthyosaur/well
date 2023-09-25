@@ -11,16 +11,11 @@ struct CurrentFocus(RefCell<Option<Window>>);
 
 impl CurrentFocus {
     fn get(seat: &Seat<State>) -> Option<Window> {
-        seat.user_data()
-            .get::<Self>()
-            .and_then(|d| d.0.borrow().clone())
+        seat.user_data().get::<Self>().and_then(|d| d.0.borrow().clone())
     }
 
     fn set(seat: &Seat<State>, window: Option<Window>) {
-        if !seat
-            .user_data()
-            .insert_if_missing(|| Self(RefCell::new(window.clone())))
-        {
+        if !seat.user_data().insert_if_missing(|| Self(RefCell::new(window.clone()))) {
             seat.user_data().get::<Self>().unwrap().0.replace(window);
         }
     }

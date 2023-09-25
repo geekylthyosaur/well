@@ -12,10 +12,7 @@ pub fn init() {
         .add_directive(Directive::from_str("calloop=error").unwrap())
         .add_directive(Directive::from_str(&format!("smithay={level}")).unwrap());
     let fmt_layer = tracing_subscriber::fmt::layer().compact();
-    tracing_subscriber::registry()
-        .with(fmt_layer)
-        .with(filter)
-        .init();
+    tracing_subscriber::registry().with(fmt_layer).with(filter).init();
     if cfg!(debug_assertions) {
         log_panics::init()
     } else {
@@ -24,8 +21,5 @@ pub fn init() {
             .install_panic_hook()
     }
 
-    info!(
-        "{PKG_NAME} {} {PKG_VERSION}",
-        if cfg!(debug_assertions) { "debug" } else { "release" }
-    );
+    info!("{PKG_NAME} {} {PKG_VERSION}", if cfg!(debug_assertions) { "debug" } else { "release" });
 }

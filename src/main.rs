@@ -49,10 +49,8 @@ fn main() -> Result<()> {
 
     handle
         .insert_source(source, |client_stream, _, data: &mut CalloopData| {
-            if let Err(err) = data
-                .display
-                .handle()
-                .insert_client(client_stream, Arc::new(ClientState::default()))
+            if let Err(err) =
+                data.display.handle().insert_client(client_stream, Arc::new(ClientState::default()))
             {
                 warn!(?err, "Failed to add wayland client");
             }
@@ -61,11 +59,7 @@ fn main() -> Result<()> {
 
     handle
         .insert_source(
-            Generic::new(
-                data.display.backend().poll_fd().as_raw_fd(),
-                Interest::READ,
-                Mode::Level,
-            ),
+            Generic::new(data.display.backend().poll_fd().as_raw_fd(), Interest::READ, Mode::Level),
             |_, _, data: &mut CalloopData| {
                 data.display
                     .dispatch_clients(&mut data.state)

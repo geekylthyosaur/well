@@ -11,6 +11,8 @@ use smithay::{
     utils::{Logical, Point, Rectangle, Transform},
 };
 
+use self::workspace::Workspace;
+use super::fullscreen::{GeometryBeforeFullscreen, IsFullscreen};
 use crate::{
     config::Config,
     render::{
@@ -19,10 +21,6 @@ use crate::{
         shader::OutlineShader,
     },
 };
-
-use self::workspace::Workspace;
-
-use super::fullscreen::{GeometryBeforeFullscreen, IsFullscreen};
 
 mod workspace;
 
@@ -37,11 +35,7 @@ impl Workspaces {
         let output = None;
         let mut workspaces = Vec::new();
         workspaces.resize_with(n, Default::default);
-        Self {
-            current: 0,
-            output,
-            workspaces,
-        }
+        Self { current: 0, output, workspaces }
     }
 
     pub fn switch_to(&mut self, new: usize) {
@@ -75,8 +69,7 @@ impl Workspaces {
             state.size = old_geometry.map(|g| g.size);
         });
         if let Some(old_geometry) = old_geometry {
-            self.current_mut()
-                .map_window(window.to_owned(), old_geometry.loc, false);
+            self.current_mut().map_window(window.to_owned(), old_geometry.loc, false);
         }
         IsFullscreen::set(window, false);
         window.toplevel().send_pending_configure();
@@ -124,9 +117,7 @@ impl Workspaces {
     }
 
     pub fn output_geometry(&self) -> Option<Rectangle<i32, Logical>> {
-        self.output
-            .as_ref()
-            .and_then(|output| self.current().output_geometry(output))
+        self.output.as_ref().and_then(|output| self.current().output_geometry(output))
     }
 
     pub fn refresh(&mut self) {
@@ -151,9 +142,7 @@ impl Workspaces {
             for e in space.elements().rev() {
                 let mut geometry = space.element_geometry(e).unwrap_or_default();
 
-                let size = geometry
-                    .size
-                    .to_buffer(output_scale as i32, Transform::Normal);
+                let size = geometry.size.to_buffer(output_scale as i32, Transform::Normal);
 
                 if size.w == 0 || size.h == 0 {
                     continue;
