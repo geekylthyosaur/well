@@ -1,4 +1,6 @@
-use anyhow::Result;
+use std::time::Duration;
+
+use anyhow::{anyhow, Result};
 use smithay::{
     backend::{
         renderer::{
@@ -8,6 +10,10 @@ use smithay::{
         winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
     },
     output::{Mode, Output, PhysicalProperties, Subpixel},
+    reexports::calloop::{
+        timer::{TimeoutAction, Timer},
+        LoopHandle,
+    },
     utils::Transform,
 };
 
@@ -16,18 +22,23 @@ use crate::{
     state::{CalloopData, State},
 };
 
-pub struct WinitBackend {
+pub struct Winit {
     backend: WinitGraphicsBackend<GlesRenderer>,
     damage_tracker: OutputDamageTracker,
-    winit: WinitEventLoop,
+    output: Output,
 }
 
-impl WinitBackend {
-    pub fn new(data: &mut CalloopData) -> Self {
-        let display = &data.display;
-        let state = &mut data.state;
+impl Winit {
+    pub fn init(data: &mut CalloopData) -> Result<()> {
+        let output = &data.backend.winit().output;
+        let _global = output.create_global::<State>(&data.state.display_handle);
+        data.state.shell.workspaces.map_output(output);
 
-        let (mut backend, winit) =
+        Ok(())
+    }
+
+    pub fn new(event_loop: LoopHandle<'static, CalloopData>) -> Self {
+        let (mut backend, mut winit) =
             winit::init::<GlesRenderer>().expect("Failed to initialize backend");
 
         let mode = Mode { size: backend.window_size().physical_size, refresh: 60_000 };
@@ -41,7 +52,6 @@ impl WinitBackend {
                 model: "Winit".into(),
             },
         );
-        let _global = output.create_global::<State>(&display.handle());
         output.change_current_state(
             Some(mode),
             Some(Transform::Flipped180),
@@ -50,19 +60,24 @@ impl WinitBackend {
         );
         output.set_preferred(mode);
 
-        state.shell.workspaces.map_output(&output);
-
         let damage_tracker = OutputDamageTracker::from_output(&output);
 
         OutlineShader::compile(backend.renderer());
 
-        Self { backend, damage_tracker, winit }
+        let timer = Timer::immediate();
+        event_loop
+            .insert_source(timer, move |_, _, data| {
+                data.backend.winit().dispatch(&mut data.state, &mut winit).unwrap();
+                TimeoutAction::ToDuration(Duration::from_secs_f32(1. / 60.))
+            })
+            .map_err(|_| anyhow!("Failed to initialize backend source"))
+            .unwrap();
+
+        Self { backend, damage_tracker, output }
     }
 
-    pub fn dispatch(&mut self, data: &mut CalloopData) -> Result<()> {
-        let state = &mut data.state;
-
-        if let Err(WinitError::WindowClosed) = self.winit.dispatch_new_events(|event| match event {
+    pub fn dispatch(&mut self, state: &mut State, winit: &mut WinitEventLoop) -> Result<()> {
+        if let Err(WinitError::WindowClosed) = winit.dispatch_new_events(|event| match event {
             WinitEvent::Resized { size, .. } => {
                 state.shell.workspaces.change_output_mode(Mode { size, refresh: 60_000 })
             }
@@ -73,6 +88,12 @@ impl WinitBackend {
             return Ok(());
         }
 
+        self.render(state).unwrap();
+
+        Ok(())
+    }
+
+    pub fn render(&mut self, state: &mut State) -> Result<()> {
         self.backend.bind()?;
         let age = self.backend.buffer_age().unwrap_or_default();
         if let Ok(RenderOutputResult { damage, .. }) =

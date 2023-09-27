@@ -4,7 +4,7 @@ use anyhow::Result;
 use smithay::{
     backend::renderer::{
         damage::OutputDamageTracker, element::surface::render_elements_from_surface_tree,
-        gles::GlesRenderer,
+        element::Kind, gles::GlesRenderer,
     },
     desktop::{PopupManager, Window},
     output::{Mode, Output, Scale},
@@ -171,6 +171,7 @@ impl Workspaces {
                                     popups_location + offset,
                                     scale,
                                     alpha,
+                                    Kind::Unspecified,
                                 )
                             })
                             .collect();
@@ -182,6 +183,7 @@ impl Workspaces {
                             window_location,
                             scale,
                             alpha,
+                            Kind::Unspecified,
                         );
 
                     (window_render_elements, popup_render_elements)

@@ -17,7 +17,7 @@ impl OutlineShader {
         renderer.egl_context().user_data().insert_if_missing(|| program);
     }
 
-    pub fn program(renderer: &mut GlesRenderer) -> GlesTexProgram {
+    pub fn program(renderer: &GlesRenderer) -> GlesTexProgram {
         renderer.egl_context().user_data().get().cloned().unwrap()
     }
 }

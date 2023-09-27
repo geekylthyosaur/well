@@ -50,6 +50,7 @@ impl State {
                     under,
                     &MotionEvent { location: point, serial, time: event.time_msec() },
                 );
+                pointer.frame(self);
             }
             InputEvent::PointerButton { event, .. } => {
                 let pointer = self.seat.get_pointer().unwrap();

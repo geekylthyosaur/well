@@ -96,7 +96,7 @@ impl TryFrom<&Path> for Config {
 pub struct Bindings(HashMap<Pattern, Action>);
 
 impl Bindings {
-    pub fn action(&self, raw_syms: &[u32], modifiers: &ModifiersState) -> Option<Action> {
+    pub fn action(&self, raw_syms: &[Keysym], modifiers: &ModifiersState) -> Option<Action> {
         self.0.iter().find_map(|(pattern, action)| {
             (pattern.modifiers == (*modifiers).into() && raw_syms.contains(&pattern.key))
                 .then_some(action.to_owned())
@@ -121,7 +121,7 @@ pub struct Pattern {
     #[serde(deserialize_with = "deserialize_KeyModifiers")]
     pub modifiers: KeyModifiers,
     #[serde(deserialize_with = "deserialize_Keysym")]
-    pub key: u32,
+    pub key: Keysym,
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Deserialize)]
@@ -190,22 +190,24 @@ where
 
     let name = String::deserialize(deserializer)?;
 
-    match xkb::keysym_from_name(&name, xkb::KEYSYM_NO_FLAGS) {
-        Keysyms::KEY_NoSymbol => match xkb::keysym_from_name(&name, xkb::KEYSYM_CASE_INSENSITIVE) {
-            Keysyms::KEY_NoSymbol => Err(<D::Error as Error>::invalid_value(
-                Unexpected::Str(&name),
-                &"One of the keysym names of xkbcommon.h without the 'KEY_' prefix",
-            )),
-            sym => {
-                warn!(
-                    "Key-Binding '{}' only matched case insensitive for {:?}",
-                    name,
-                    xkb::keysym_get_name(sym)
-                );
-                Ok(sym)
+    match xkb::keysym_from_name(&name, xkb::KEYSYM_NO_FLAGS).raw() {
+        Keysyms::KEY_NoSymbol => {
+            match xkb::keysym_from_name(&name, xkb::KEYSYM_CASE_INSENSITIVE).raw() {
+                Keysyms::KEY_NoSymbol => Err(<D::Error as Error>::invalid_value(
+                    Unexpected::Str(&name),
+                    &"One of the keysym names of xkbcommon.h without the 'KEY_' prefix",
+                )),
+                sym => {
+                    warn!(
+                        "Key-Binding '{}' only matched case insensitive for {:?}",
+                        name,
+                        xkb::keysym_get_name(sym.into())
+                    );
+                    Ok(sym.into())
+                }
             }
-        },
-        sym => Ok(sym),
+        }
+        sym => Ok(sym.into()),
     }
 }
 

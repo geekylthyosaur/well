@@ -3,9 +3,12 @@ use std::time::Instant;
 use smithay::{
     desktop::PopupManager,
     input::{Seat, SeatState},
-    reexports::wayland_server::{
-        backend::{ClientData, ClientId, DisconnectReason},
-        Display, DisplayHandle,
+    reexports::{
+        calloop::LoopHandle,
+        wayland_server::{
+            backend::{ClientData, ClientId, DisconnectReason},
+            DisplayHandle,
+        },
     },
     wayland::{
         compositor::{CompositorClientState, CompositorState},
@@ -15,11 +18,19 @@ use smithay::{
     },
 };
 
-use crate::{config::Config, shell::Shell, PKG_NAME};
+use crate::{backend::Backend, config::Config, shell::Shell, PKG_NAME};
+
+pub struct CalloopData {
+    pub backend: Backend,
+    pub state: State,
+}
 
 pub struct State {
     pub is_running: bool,
     pub start_time: Instant,
+
+    pub display_handle: DisplayHandle,
+    pub event_loop: LoopHandle<'static, CalloopData>,
 
     pub config: Config,
     pub popups: PopupManager,
@@ -36,9 +47,11 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(dh: &DisplayHandle) -> Self {
+    pub fn new(dh: &DisplayHandle, event_loop: LoopHandle<'static, CalloopData>) -> Self {
         let is_running = true;
         let start_time = Instant::now();
+
+        let display_handle = dh.clone();
 
         let config = Config::load().unwrap();
         let popups = PopupManager::default();
@@ -59,6 +72,9 @@ impl State {
         Self {
             is_running,
             start_time,
+
+            display_handle,
+            event_loop,
 
             config,
             popups,
@@ -85,9 +101,4 @@ impl ClientData for ClientState {
     fn initialized(&self, _client_id: ClientId) {}
 
     fn disconnected(&self, _client_id: ClientId, _reason: DisconnectReason) {}
-}
-
-pub struct CalloopData {
-    pub display: Display<State>,
-    pub state: State,
 }
