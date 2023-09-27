@@ -3,42 +3,20 @@ use smithay::{
     backend::{
         allocator::Fourcc,
         renderer::{
-            damage::{OutputDamageTracker, RenderOutputResult},
+            damage::OutputDamageTracker,
             gles::{GlesRenderer, GlesTexture},
             Bind, Offscreen,
         },
-        winit::WinitGraphicsBackend,
     },
     utils::{Buffer, Size},
 };
 
 use self::element::OutputRenderElement;
-use crate::state::State;
 
 pub mod element;
 pub mod shader;
 
 pub const CLEAR_COLOR: [f32; 4] = [0.6, 0.6, 0.6, 1.0];
-
-impl State {
-    pub fn render_output(
-        &self,
-        backend: &mut WinitGraphicsBackend<GlesRenderer>,
-        age: usize,
-        damage_tracker: &mut OutputDamageTracker,
-    ) -> Result<RenderOutputResult> {
-        let focus = self.get_focus();
-        let elements = self.shell.workspaces.render_elements(
-            backend.renderer(),
-            damage_tracker,
-            focus.as_ref(),
-            &self.config,
-        )?;
-
-        backend.bind().unwrap();
-        Ok(damage_tracker.render_output(backend.renderer(), age, &elements, CLEAR_COLOR)?)
-    }
-}
 
 pub fn render_offscreen(
     renderer: &mut GlesRenderer,
