@@ -30,7 +30,7 @@ pub struct Winit {
 
 impl Winit {
     pub fn init(data: &mut CalloopData) {
-        let output = &data.backend.winit().output;
+        let output = &data.backend.as_ref::<Self>().output;
         let _global = output.create_global::<State>(&data.state.display_handle);
         data.state.shell.workspaces.map_output(output);
     }
@@ -65,7 +65,7 @@ impl Winit {
         let timer = Timer::immediate();
         event_loop
             .insert_source(timer, move |_, _, data| {
-                data.backend.winit().dispatch(&mut data.state, &mut winit);
+                data.backend.as_mut::<Self>().dispatch(&mut data.state, &mut winit);
                 TimeoutAction::ToDuration(Duration::from_secs_f32(1. / 60.))
             })
             .map_err(|_| anyhow!("Failed to initialize backend source"))
@@ -75,14 +75,15 @@ impl Winit {
     }
 
     pub fn dispatch(&mut self, state: &mut State, winit: &mut WinitEventLoop) {
-        if let Err(WinitError::WindowClosed) = winit.dispatch_new_events(|event| match event {
+        let dispatcher = winit.dispatch_new_events(|event| match event {
             WinitEvent::Resized { size, .. } => {
                 state.shell.workspaces.change_output_mode(Mode { size, refresh: 60_000 })
             }
             WinitEvent::Input(event) => state.handle_input(event),
             WinitEvent::Refresh => self.render(state).unwrap(),
             _ => (),
-        }) {
+        });
+        if let Err(WinitError::WindowClosed) = dispatcher {
             state.is_running = false;
         }
     }

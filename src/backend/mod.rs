@@ -28,8 +28,31 @@ impl Backend {
         }
     }
 
-    pub fn winit(&mut self) -> &mut Winit {
-        let Self::Winit(ref mut b) = self;
+    pub fn as_ref<B>(&self) -> &B
+    where
+        Backend: AsRef<B>,
+    {
+        AsRef::<B>::as_ref(self)
+    }
+
+    pub fn as_mut<B>(&mut self) -> &mut B
+    where
+        Backend: AsMut<B>,
+    {
+        AsMut::<B>::as_mut(self)
+    }
+}
+
+impl AsRef<Winit> for Backend {
+    fn as_ref(&self) -> &Winit {
+        let Self::Winit(b) = self;
+        b
+    }
+}
+
+impl AsMut<Winit> for Backend {
+    fn as_mut(&mut self) -> &mut Winit {
+        let Self::Winit(b) = self;
         b
     }
 }

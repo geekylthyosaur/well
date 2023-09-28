@@ -53,7 +53,7 @@ impl State {
 
         let display_handle = dh.clone();
 
-        let config = Config::load().unwrap();
+        let config = Config::new().unwrap();
         let popups = PopupManager::default();
         let shell = Shell::new(config.workspace_count);
 
@@ -65,6 +65,8 @@ impl State {
         let xdg_decoration_state = XdgDecorationState::new::<State>(dh);
 
         let mut seat = seat_state.new_wl_seat(dh, PKG_NAME);
+
+        Config::setup_watcher(config.path.as_path(), event_loop.clone());
 
         let _ = seat.add_keyboard(Default::default(), 180, 60);
         let _ = seat.add_pointer();

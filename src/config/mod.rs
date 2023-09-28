@@ -1,19 +1,27 @@
+use std::path::PathBuf;
 use std::{collections::HashMap, io::Error as IoError, path::Path, str::FromStr};
 
 use anyhow::Result;
 use mlua::{Error as LuaError, Lua, LuaSerdeExt};
 use serde::Deserialize;
 use smithay::input::keyboard::{keysyms as Keysyms, xkb, Keysym, ModifiersState};
+use smithay::reexports::calloop::{self, channel::Event as ChannelEvent, LoopHandle};
 use tracing::{debug, error, info, warn};
 
+use self::watcher::Watcher;
+use crate::state::CalloopData;
 use crate::PKG_NAME;
 
-const DEFAULT_CONFIG: &str = include_str!("../examples/config.lua");
+mod watcher;
+
+const DEFAULT_CONFIG: &str = include_str!("../../examples/config.lua");
 
 pub type Color = [f32; 3];
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    #[serde(skip)]
+    pub path: PathBuf,
     pub bindings: Bindings,
     #[serde(default = "default_workspace_count")]
     pub workspace_count: usize,
@@ -24,14 +32,15 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         warn!("Using default configuration");
-        Config::from_str(DEFAULT_CONFIG).expect("Default config contains errors")
+        let config = Config::from_str(DEFAULT_CONFIG).expect("Default config contains errors");
+        Config { path: PathBuf::from("../../examples/config.lua"), ..config }
     }
 }
 
 impl mlua::UserData for Config {}
 
 impl Config {
-    pub fn load() -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let config = if let Some(path) = {
             let xdg = xdg::BaseDirectories::new().ok();
             xdg.and_then(|base| {
@@ -67,6 +76,24 @@ impl Config {
 
         Ok(config)
     }
+
+    fn reload(&mut self) {
+        debug!("Reloading configuration");
+        let config = Self::try_from(self.path.as_path()).unwrap();
+        let _ = std::mem::replace(self, config);
+    }
+
+    pub fn setup_watcher(path: &Path, event_loop: LoopHandle<'static, CalloopData>) {
+        let (tx, rx) = calloop::channel::sync_channel(1);
+        let watcher = Watcher::new(path.to_owned(), tx);
+        event_loop
+            .insert_source(rx, move |event, _, data| match event {
+                ChannelEvent::Msg(()) => data.state.config.reload(),
+                ChannelEvent::Closed => (),
+            })
+            .unwrap();
+        Box::leak(Box::new(watcher));
+    }
 }
 
 impl FromStr for Config {
@@ -87,7 +114,7 @@ impl TryFrom<&Path> for Config {
         info!(?path, "Trying to load configuration file");
         let s = std::fs::read_to_string(path)?;
         let config = Config::from_str(&s)?;
-        Ok(config)
+        Ok(Config { path: path.to_owned(), ..config })
     }
 }
 
