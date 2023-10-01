@@ -27,7 +27,7 @@ impl State {
             InputEvent::PointerMotionAbsolute { event, .. } => {
                 let output_geo = self.shell.workspaces.output_geometry().unwrap();
 
-                let point = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
+                let point = event.position_transformed(output_geo.size);
 
                 let serial = SERIAL_COUNTER.next_serial();
 

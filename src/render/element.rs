@@ -25,6 +25,7 @@ pub struct RoundedElement {
     program: GlesTexProgram,
     radius: f32,
     texture: GlesTexture,
+    transform: Transform,
     thickness: f32,
 }
 
@@ -35,6 +36,7 @@ impl RoundedElement {
         program: GlesTexProgram,
         radius: f32,
         texture: GlesTexture,
+        transform: Transform,
         thickness: f32,
     ) -> Self {
         Self {
@@ -45,6 +47,7 @@ impl RoundedElement {
             program,
             radius,
             texture,
+            transform,
             thickness,
         }
     }
@@ -61,11 +64,8 @@ impl Element for RoundedElement {
 
     fn src(&self) -> Rectangle<f64, Buffer> {
         let scale = 1.0;
-        let mut src = self.geometry.to_f64().to_buffer(
-            scale,
-            Transform::Normal,
-            &self.geometry.size.to_f64(),
-        );
+        let mut src =
+            self.geometry.to_f64().to_buffer(scale, self.transform(), &self.geometry.size.to_f64());
         src.loc.x = 0.0;
         src.loc.y = 0.0;
 
@@ -74,6 +74,10 @@ impl Element for RoundedElement {
 
     fn geometry(&self, scale: Scale<f64>) -> Rectangle<i32, Physical> {
         self.geometry.to_f64().to_physical_precise_round(scale)
+    }
+
+    fn transform(&self) -> Transform {
+        self.transform
     }
 }
 
@@ -99,8 +103,8 @@ impl RenderElement<GlesRenderer> for RoundedElement {
             src,
             dst,
             damage,
-            Transform::Flipped180,
-            1.0,
+            self.transform(),
+            self.alpha(),
             program,
             &additional_uniforms,
         )

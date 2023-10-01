@@ -3,12 +3,12 @@ use std::time::Duration;
 use anyhow::Result;
 use smithay::{
     backend::renderer::{
-        damage::OutputDamageTracker, element::surface::render_elements_from_surface_tree,
-        element::Kind, gles::GlesRenderer,
+        damage::OutputDamageTracker, element::surface, element::Kind, gles::GlesRenderer,
     },
     desktop::{PopupManager, Window},
     output::{Mode, Output, Scale},
-    utils::{Logical, Point, Rectangle, Transform},
+    reexports::wayland_server::protocol::wl_surface::WlSurface,
+    utils::{Logical, Physical, Point, Rectangle, Transform},
 };
 
 use self::workspace::Workspace;
@@ -120,6 +120,10 @@ impl Workspaces {
         self.output.as_ref().and_then(|output| self.current().output_geometry(output))
     }
 
+    pub fn output_transform(&self) -> Option<Transform> {
+        self.output.as_ref().map(|output| output.current_transform())
+    }
+
     pub fn refresh(&mut self) {
         self.current_mut().refresh();
     }
@@ -136,11 +140,12 @@ impl Workspaces {
             let space = &self.current().space;
             let output_scale = output.current_scale().fractional_scale();
             let output_geometry = self.output_geometry().unwrap();
+            let output_transform = self.output_transform().unwrap();
             let alpha = 1.0;
             let scale = 1.0;
 
-            for e in space.elements().rev() {
-                let mut geometry = space.element_geometry(e).unwrap_or_default();
+            for window in space.elements_for_output(output).rev() {
+                let mut geometry = space.element_geometry(window).unwrap_or_default();
 
                 let size = geometry.size.to_buffer(output_scale as i32, Transform::Normal);
 
@@ -148,46 +153,29 @@ impl Workspaces {
                     continue;
                 }
 
-                let (window_elements, popup_elements) = {
-                    let surface = e.toplevel().wl_surface();
+                let window_location = (output_transform
+                    .transform_point_in(output_geometry.loc, &output_geometry.size)
+                    - output_transform.transform_point_in(geometry.loc, &geometry.size)
+                    - Point::from((
+                        output_geometry.loc.x - geometry.loc.x,
+                        geometry.loc.y - output_geometry.loc.y,
+                    ))
+                    - window.geometry().loc)
+                    .to_physical_precise_round(output_scale);
 
-                    // TODO: wtf
-                    let window_location =
-                        Point::from((0, output_geometry.size.h - e.geometry().size.h))
-                            - e.geometry().loc.to_physical_precise_round(output_scale);
-                    let popups_location = (space.element_location(e).unwrap() - e.geometry().loc)
-                        .to_physical_precise_round(output_scale);
+                let popups_location =
+                    (geometry.loc - window.geometry().loc).to_physical_precise_round(output_scale);
+                let surface = window.toplevel().wl_surface();
 
-                    let popup_render_elements: Vec<OutputRenderElement> =
-                        PopupManager::popups_for_surface(surface)
-                            .flat_map(|(popup, popup_offset)| {
-                                let offset = (e.geometry().loc + popup_offset
-                                    - popup.geometry().loc)
-                                    .to_physical_precise_round(scale);
-
-                                render_elements_from_surface_tree(
-                                    renderer,
-                                    popup.wl_surface(),
-                                    popups_location + offset,
-                                    scale,
-                                    alpha,
-                                    Kind::Unspecified,
-                                )
-                            })
-                            .collect();
-
-                    let window_render_elements: Vec<OutputRenderElement> =
-                        render_elements_from_surface_tree(
-                            renderer,
-                            surface,
-                            window_location,
-                            scale,
-                            alpha,
-                            Kind::Unspecified,
-                        );
-
-                    (window_render_elements, popup_render_elements)
-                };
+                let (window_elements, popup_elements) = split_surface_render_elements(
+                    renderer,
+                    surface,
+                    window_location,
+                    popups_location,
+                    window.geometry(),
+                    scale,
+                    alpha,
+                );
 
                 elements.extend(popup_elements);
 
@@ -195,7 +183,7 @@ impl Workspaces {
                     render_offscreen(renderer, damage_tracker, &window_elements, size)?
                 {
                     let color = focus
-                        .and_then(|focus| focus.eq(e).then_some(config.outline.focused_color))
+                        .and_then(|focus| focus.eq(window).then_some(config.outline.focused_color))
                         .unwrap_or(config.outline.color);
                     let radius = config.outline.radius as f32;
                     let thickness = config.outline.thickness as f32;
@@ -204,8 +192,15 @@ impl Workspaces {
                     let t = thickness as i32;
                     geometry.size += (t * 2, t * 2).into();
                     geometry.loc -= (t, t).into();
-                    let element =
-                        RoundedElement::new(color, geometry, program, radius, texture, thickness);
+                    let element = RoundedElement::new(
+                        color,
+                        geometry,
+                        program,
+                        radius,
+                        texture,
+                        output_transform,
+                        thickness,
+                    );
                     elements.push(OutputRenderElement::RoundedWindow(element));
                 }
             }
@@ -220,4 +215,41 @@ impl Workspaces {
             })
         }
     }
+}
+
+fn split_surface_render_elements(
+    renderer: &mut GlesRenderer,
+    surface: &WlSurface,
+    window_location: Point<i32, Physical>,
+    popups_location: Point<i32, Physical>,
+    geometry: Rectangle<i32, Logical>,
+    scale: f64,
+    alpha: f32,
+) -> (Vec<OutputRenderElement>, Vec<OutputRenderElement>) {
+    let popup_render_elements = PopupManager::popups_for_surface(surface)
+        .flat_map(|(popup, popup_offset)| {
+            let offset = (geometry.loc + popup_offset - popup.geometry().loc)
+                .to_physical_precise_round(scale);
+
+            surface::render_elements_from_surface_tree(
+                renderer,
+                popup.wl_surface(),
+                popups_location + offset,
+                scale,
+                alpha,
+                Kind::Unspecified,
+            )
+        })
+        .collect();
+
+    let window_render_elements = surface::render_elements_from_surface_tree(
+        renderer,
+        surface,
+        window_location,
+        scale,
+        alpha,
+        Kind::Unspecified,
+    );
+
+    (window_render_elements, popup_render_elements)
 }
