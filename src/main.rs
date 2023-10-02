@@ -11,7 +11,7 @@ use smithay::{
 use tracing::{error, info, warn};
 
 use crate::{
-    backend::Backend,
+    backend::BackendState,
     state::{CalloopData, ClientState, State},
 };
 
@@ -37,9 +37,9 @@ fn main() -> Result<()> {
     let handle = event_loop.handle();
 
     let state = State::new(&display.handle(), handle.clone());
-    let backend = Backend::new(handle.clone());
+    let backend = BackendState::new(handle.clone());
     let mut data = CalloopData { backend, state };
-    Backend::init(&mut data);
+    BackendState::init(&mut data);
 
     let source = ListeningSocketSource::new_auto()?;
     let socket_name = source.socket_name().to_os_string();

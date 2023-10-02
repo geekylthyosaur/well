@@ -18,10 +18,10 @@ use smithay::{
     },
 };
 
-use crate::{backend::Backend, config::Config, shell::Shell, PKG_NAME};
+use crate::{backend::BackendState, config::Config, shell::Shell, PKG_NAME};
 
 pub struct CalloopData {
-    pub backend: Backend,
+    pub backend: BackendState,
     pub state: State,
 }
 

@@ -1,17 +1,35 @@
 use std::env;
 
-use smithay::reexports::calloop::LoopHandle;
+use anyhow::Result;
+use smithay::{
+    backend::renderer::gles::{GlesRenderer, GlesTexture},
+    reexports::calloop::LoopHandle,
+    utils::{Buffer, Size},
+};
 
-pub use self::winit::Winit;
-use crate::state::CalloopData;
+use self::winit::Winit;
+use crate::{
+    render::element::OutputRenderElement,
+    state::{CalloopData, State},
+};
 
 mod winit;
 
-pub enum Backend {
+pub trait Backend {
+    fn render(&mut self, state: &mut State) -> Result<()>;
+    fn renderer(&mut self) -> &mut GlesRenderer;
+    fn render_offscreen(
+        &mut self,
+        elements: &[OutputRenderElement],
+        size: Size<i32, Buffer>,
+    ) -> Result<Option<GlesTexture>>;
+}
+
+pub enum BackendState {
     Winit(Winit),
 }
 
-impl Backend {
+impl BackendState {
     pub fn new(event_loop: LoopHandle<'static, CalloopData>) -> Self {
         if env::var_os("WAYLAND_DISPLAY").is_some() || env::var_os("DISPLAY").is_some() {
             Self::Winit(Winit::new(event_loop))
@@ -30,27 +48,27 @@ impl Backend {
 
     pub fn as_ref<B>(&self) -> &B
     where
-        Backend: AsRef<B>,
+        BackendState: AsRef<B>,
     {
         AsRef::<B>::as_ref(self)
     }
 
     pub fn as_mut<B>(&mut self) -> &mut B
     where
-        Backend: AsMut<B>,
+        BackendState: AsMut<B>,
     {
         AsMut::<B>::as_mut(self)
     }
 }
 
-impl AsRef<Winit> for Backend {
+impl AsRef<Winit> for BackendState {
     fn as_ref(&self) -> &Winit {
         let Self::Winit(b) = self;
         b
     }
 }
 
-impl AsMut<Winit> for Backend {
+impl AsMut<Winit> for BackendState {
     fn as_mut(&mut self) -> &mut Winit {
         let Self::Winit(b) = self;
         b

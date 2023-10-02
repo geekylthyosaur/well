@@ -3,9 +3,11 @@ use std::time::Duration;
 use anyhow::{anyhow, Result};
 use smithay::{
     backend::{
+        allocator::Fourcc,
         renderer::{
             damage::{OutputDamageTracker, RenderOutputResult},
-            gles::GlesRenderer,
+            gles::{GlesRenderer, GlesTexture},
+            Offscreen,
         },
         winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
     },
@@ -14,11 +16,12 @@ use smithay::{
         timer::{TimeoutAction, Timer},
         LoopHandle,
     },
-    utils::Transform,
+    utils::{Buffer, Size, Transform},
 };
 
+use super::Backend;
 use crate::{
-    render::{shader::OutlineShader, CLEAR_COLOR},
+    render::{element::OutputRenderElement, shader::OutlineShader, CLEAR_COLOR},
     state::{CalloopData, State},
 };
 
@@ -87,15 +90,16 @@ impl Winit {
             state.is_running = false;
         }
     }
+}
 
-    pub fn render(&mut self, state: &mut State) -> Result<()> {
-        let backend = &mut self.backend;
+impl Backend for Winit {
+    fn render(&mut self, state: &mut State) -> Result<()> {
         let elements = state.shell.workspaces.render_elements(
-            backend.renderer(),
-            &mut self.damage_tracker,
+            self,
             state.get_focus().as_ref(),
             &state.config,
         )?;
+        let backend = &mut self.backend;
         backend.bind()?;
         let age = backend.buffer_age().unwrap_or_default();
         let res =
@@ -110,5 +114,29 @@ impl Winit {
         state.shell.workspaces.refresh();
 
         Ok(())
+    }
+
+    fn renderer(&mut self) -> &mut GlesRenderer {
+        self.backend.renderer()
+    }
+
+    fn render_offscreen(
+        &mut self,
+        elements: &[OutputRenderElement],
+        size: Size<i32, Buffer>,
+    ) -> Result<Option<GlesTexture>> {
+        if size.w == 0 || size.h == 0 {
+            return Ok(None);
+        }
+        let renderer = self.backend.renderer();
+        let texture = Offscreen::<GlesTexture>::create_buffer(renderer, Fourcc::Abgr8888, size)?;
+        self.damage_tracker.render_output_with(
+            renderer,
+            texture.clone(),
+            0,
+            elements,
+            CLEAR_COLOR,
+        )?;
+        Ok(Some(texture))
     }
 }

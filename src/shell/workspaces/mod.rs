@@ -2,9 +2,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use smithay::{
-    backend::renderer::{
-        damage::OutputDamageTracker, element::surface, element::Kind, gles::GlesRenderer,
-    },
+    backend::renderer::{element::surface, element::Kind, gles::GlesRenderer},
     desktop::{PopupManager, Window},
     output::{Mode, Output, Scale},
     reexports::wayland_server::protocol::wl_surface::WlSurface,
@@ -14,10 +12,10 @@ use smithay::{
 use self::workspace::Workspace;
 use super::fullscreen::{GeometryBeforeFullscreen, IsFullscreen};
 use crate::{
+    backend::Backend,
     config::Config,
     render::{
         element::{OutputRenderElement, RoundedElement},
-        render_offscreen,
         shader::OutlineShader,
     },
 };
@@ -130,8 +128,7 @@ impl Workspaces {
 
     pub fn render_elements(
         &self,
-        renderer: &mut GlesRenderer,
-        damage_tracker: &mut OutputDamageTracker,
+        backend: &mut impl Backend,
         focus: Option<&Window>,
         config: &Config,
     ) -> Result<Vec<OutputRenderElement>> {
@@ -168,7 +165,7 @@ impl Workspaces {
                 let surface = window.toplevel().wl_surface();
 
                 let (window_elements, popup_elements) = split_surface_render_elements(
-                    renderer,
+                    backend.renderer(),
                     surface,
                     window_location,
                     popups_location,
@@ -179,16 +176,14 @@ impl Workspaces {
 
                 elements.extend(popup_elements);
 
-                if let Some(texture) =
-                    render_offscreen(renderer, damage_tracker, &window_elements, size)?
-                {
+                if let Some(texture) = backend.render_offscreen(&window_elements, size)? {
                     let color = focus
                         .and_then(|focus| focus.eq(window).then_some(config.outline.focused_color))
                         .unwrap_or(config.outline.color);
                     let radius = config.outline.radius as f32;
                     let thickness = config.outline.thickness as f32;
 
-                    let program = OutlineShader::program(renderer);
+                    let program = OutlineShader::program(backend.renderer());
                     let t = thickness as i32;
                     geometry.size += (t * 2, t * 2).into();
                     geometry.loc -= (t, t).into();
