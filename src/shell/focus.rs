@@ -1,9 +1,9 @@
 use std::cell::RefCell;
 
-use smithay::{
-    desktop::Window, input::Seat, reexports::wayland_server::protocol::wl_surface::WlSurface,
-    utils::SERIAL_COUNTER,
-};
+use smithay::desktop::Window;
+use smithay::input::Seat;
+use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
+use smithay::utils::SERIAL_COUNTER;
 
 use crate::state::State;
 

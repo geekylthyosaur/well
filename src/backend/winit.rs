@@ -1,29 +1,21 @@
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use smithay::{
-    backend::{
-        allocator::Fourcc,
-        renderer::{
-            damage::{OutputDamageTracker, RenderOutputResult},
-            gles::{GlesRenderer, GlesTexture},
-            Offscreen,
-        },
-        winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
-    },
-    output::{Mode, Output, PhysicalProperties, Subpixel},
-    reexports::calloop::{
-        timer::{TimeoutAction, Timer},
-        LoopHandle,
-    },
-    utils::{Buffer, Size, Transform},
-};
+use smithay::backend::allocator::Fourcc;
+use smithay::backend::renderer::damage::{OutputDamageTracker, RenderOutputResult};
+use smithay::backend::renderer::gles::{GlesRenderer, GlesTexture};
+use smithay::backend::renderer::Offscreen;
+use smithay::backend::winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend};
+use smithay::output::{Mode, Output, PhysicalProperties, Subpixel};
+use smithay::reexports::calloop::timer::{TimeoutAction, Timer};
+use smithay::reexports::calloop::LoopHandle;
+use smithay::utils::{Buffer, Size, Transform};
 
 use super::Backend;
-use crate::{
-    render::{element::OutputRenderElement, shader::OutlineShader, CLEAR_COLOR},
-    state::{CalloopData, State},
-};
+use crate::render::element::OutputRenderElement;
+use crate::render::shader::OutlineShader;
+use crate::render::CLEAR_COLOR;
+use crate::state::{CalloopData, State};
 
 pub struct Winit {
     backend: WinitGraphicsBackend<GlesRenderer>,

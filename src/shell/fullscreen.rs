@@ -1,9 +1,7 @@
 use std::cell::RefCell;
 
-use smithay::{
-    desktop::Window,
-    utils::{Logical, Rectangle},
-};
+use smithay::desktop::Window;
+use smithay::utils::{Logical, Rectangle};
 
 pub struct IsFullscreen(RefCell<bool>);
 

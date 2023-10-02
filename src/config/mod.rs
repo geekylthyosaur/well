@@ -1,11 +1,14 @@
-use std::path::PathBuf;
-use std::{collections::HashMap, io::Error as IoError, path::Path, str::FromStr};
+use std::collections::HashMap;
+use std::io::Error as IoError;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use anyhow::Result;
 use mlua::{Error as LuaError, Lua, LuaSerdeExt};
 use serde::Deserialize;
 use smithay::input::keyboard::{keysyms as Keysyms, xkb, Keysym, ModifiersState};
-use smithay::reexports::calloop::{self, channel::Event as ChannelEvent, LoopHandle};
+use smithay::reexports::calloop::channel::Event as ChannelEvent;
+use smithay::reexports::calloop::{self, LoopHandle};
 use tracing::{debug, error, info, warn};
 
 use self::watcher::Watcher;

@@ -1,19 +1,14 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use smithay::{
-    reexports::{
-        calloop::{generic::Generic, EventLoop, Interest, Mode, PostAction},
-        wayland_server::Display,
-    },
-    wayland::socket::ListeningSocketSource,
-};
+use smithay::reexports::calloop::generic::Generic;
+use smithay::reexports::calloop::{EventLoop, Interest, Mode, PostAction};
+use smithay::reexports::wayland_server::Display;
+use smithay::wayland::socket::ListeningSocketSource;
 use tracing::{error, info, warn};
 
-use crate::{
-    backend::BackendState,
-    state::{CalloopData, ClientState, State},
-};
+use crate::backend::BackendState;
+use crate::state::{CalloopData, ClientState, State};
 
 mod backend;
 mod config;

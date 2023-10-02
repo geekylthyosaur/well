@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
 use tracing::info;
-use tracing_subscriber::{filter::Directive, prelude::*, EnvFilter};
+use tracing_subscriber::filter::Directive;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::EnvFilter;
 
 use crate::{PKG_NAME, PKG_VERSION};
 

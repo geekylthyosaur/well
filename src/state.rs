@@ -1,24 +1,20 @@
 use std::time::Instant;
 
-use smithay::{
-    desktop::PopupManager,
-    input::{Seat, SeatState},
-    reexports::{
-        calloop::LoopHandle,
-        wayland_server::{
-            backend::{ClientData, ClientId, DisconnectReason},
-            DisplayHandle,
-        },
-    },
-    wayland::{
-        compositor::{CompositorClientState, CompositorState},
-        data_device::DataDeviceState,
-        shell::xdg::{decoration::XdgDecorationState, XdgShellState},
-        shm::ShmState,
-    },
-};
+use smithay::desktop::PopupManager;
+use smithay::input::{Seat, SeatState};
+use smithay::reexports::calloop::LoopHandle;
+use smithay::reexports::wayland_server::backend::{ClientData, ClientId, DisconnectReason};
+use smithay::reexports::wayland_server::DisplayHandle;
+use smithay::wayland::compositor::{CompositorClientState, CompositorState};
+use smithay::wayland::data_device::DataDeviceState;
+use smithay::wayland::shell::xdg::decoration::XdgDecorationState;
+use smithay::wayland::shell::xdg::XdgShellState;
+use smithay::wayland::shm::ShmState;
 
-use crate::{backend::BackendState, config::Config, shell::Shell, PKG_NAME};
+use crate::backend::BackendState;
+use crate::config::Config;
+use crate::shell::Shell;
+use crate::PKG_NAME;
 
 pub struct CalloopData {
     pub backend: BackendState,

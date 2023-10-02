@@ -1,9 +1,7 @@
-use smithay::{
-    desktop::{Space, Window, WindowSurfaceType},
-    output::Output,
-    reexports::wayland_server::protocol::wl_surface::WlSurface,
-    utils::{Logical, Point, Rectangle},
-};
+use smithay::desktop::{Space, Window, WindowSurfaceType};
+use smithay::output::Output;
+use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
+use smithay::utils::{Logical, Point, Rectangle};
 
 #[derive(Default)]
 pub struct Workspace {

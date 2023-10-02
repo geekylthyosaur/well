@@ -1,17 +1,13 @@
 use std::env;
 
 use anyhow::Result;
-use smithay::{
-    backend::renderer::gles::{GlesRenderer, GlesTexture},
-    reexports::calloop::LoopHandle,
-    utils::{Buffer, Size},
-};
+use smithay::backend::renderer::gles::{GlesRenderer, GlesTexture};
+use smithay::reexports::calloop::LoopHandle;
+use smithay::utils::{Buffer, Size};
 
 use self::winit::Winit;
-use crate::{
-    render::element::OutputRenderElement,
-    state::{CalloopData, State},
-};
+use crate::render::element::OutputRenderElement;
+use crate::state::{CalloopData, State};
 
 mod winit;
 

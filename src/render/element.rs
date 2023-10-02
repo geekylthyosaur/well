@@ -1,13 +1,12 @@
 use anyhow::Result;
-use smithay::{
-    backend::renderer::{
-        element::{surface::WaylandSurfaceRenderElement, Element, Id, RenderElement},
-        gles::{GlesError, GlesFrame, GlesRenderer, GlesTexProgram, GlesTexture, Uniform},
-        utils::CommitCounter,
-    },
-    render_elements,
-    utils::{Buffer, Logical, Physical, Rectangle, Scale, Transform},
+use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
+use smithay::backend::renderer::element::{Element, Id, RenderElement};
+use smithay::backend::renderer::gles::{
+    GlesError, GlesFrame, GlesRenderer, GlesTexProgram, GlesTexture, Uniform,
 };
+use smithay::backend::renderer::utils::CommitCounter;
+use smithay::render_elements;
+use smithay::utils::{Buffer, Logical, Physical, Rectangle, Scale, Transform};
 
 use crate::config::Color;
 

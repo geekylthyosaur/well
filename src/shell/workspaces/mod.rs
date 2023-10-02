@@ -1,24 +1,19 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use smithay::{
-    backend::renderer::{element::surface, element::Kind, gles::GlesRenderer},
-    desktop::{PopupManager, Window},
-    output::{Mode, Output, Scale},
-    reexports::wayland_server::protocol::wl_surface::WlSurface,
-    utils::{Logical, Physical, Point, Rectangle, Transform},
-};
+use smithay::backend::renderer::element::{surface, Kind};
+use smithay::backend::renderer::gles::GlesRenderer;
+use smithay::desktop::{PopupManager, Window};
+use smithay::output::{Mode, Output, Scale};
+use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
+use smithay::utils::{Logical, Physical, Point, Rectangle, Transform};
 
 use self::workspace::Workspace;
 use super::fullscreen::{GeometryBeforeFullscreen, IsFullscreen};
-use crate::{
-    backend::Backend,
-    config::Config,
-    render::{
-        element::{OutputRenderElement, RoundedElement},
-        shader::OutlineShader,
-    },
-};
+use crate::backend::Backend;
+use crate::config::Config;
+use crate::render::element::{OutputRenderElement, RoundedElement};
+use crate::render::shader::OutlineShader;
 
 mod workspace;
 

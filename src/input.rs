@@ -1,19 +1,16 @@
 use anyhow::Result;
-use smithay::{
-    backend::input::{
-        AbsolutePositionEvent, ButtonState, Event, InputBackend, InputEvent, KeyState,
-        KeyboardKeyEvent, PointerButtonEvent,
-    },
-    input::{
-        keyboard::FilterResult,
-        pointer::{ButtonEvent, MotionEvent},
-    },
-    reexports::wayland_server::protocol::wl_surface::WlSurface,
-    utils::SERIAL_COUNTER,
+use smithay::backend::input::{
+    AbsolutePositionEvent, ButtonState, Event, InputBackend, InputEvent, KeyState,
+    KeyboardKeyEvent, PointerButtonEvent,
 };
+use smithay::input::keyboard::FilterResult;
+use smithay::input::pointer::{ButtonEvent, MotionEvent};
+use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
+use smithay::utils::SERIAL_COUNTER;
 use tracing::{debug, error};
 
-use crate::{config::Action, state::State};
+use crate::config::Action;
+use crate::state::State;
 
 impl State {
     pub fn handle_input<I: InputBackend>(&mut self, event: InputEvent<I>) {
