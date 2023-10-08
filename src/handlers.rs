@@ -1,35 +1,34 @@
 use std::os::fd::OwnedFd;
 
+use smithay::backend::renderer::utils::on_commit_buffer_handler;
+use smithay::desktop::{PopupKind, Window};
+use smithay::input::pointer::CursorImageStatus;
+use smithay::input::{Seat, SeatHandler, SeatState};
+use smithay::reexports::wayland_protocols;
+use smithay::reexports::wayland_server::protocol::wl_buffer::WlBuffer;
+use smithay::reexports::wayland_server::protocol::wl_seat::WlSeat;
+use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
+use smithay::reexports::wayland_server::Client;
+use smithay::utils::Serial;
+use smithay::wayland::buffer::BufferHandler;
+use smithay::wayland::compositor::{
+    get_parent, is_sync_subsurface, with_states, CompositorClientState, CompositorHandler,
+    CompositorState,
+};
+use smithay::wayland::data_device::{
+    ClientDndGrabHandler, DataDeviceHandler, DataDeviceState, ServerDndGrabHandler,
+};
+use smithay::wayland::shell::xdg::decoration::XdgDecorationHandler;
+use smithay::wayland::shell::xdg::{
+    PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler, XdgShellState,
+    XdgToplevelSurfaceData,
+};
+use smithay::wayland::shm::{ShmHandler, ShmState};
 use smithay::{
-    backend::renderer::utils::on_commit_buffer_handler,
     delegate_compositor, delegate_data_device, delegate_output, delegate_seat, delegate_shm,
     delegate_xdg_decoration, delegate_xdg_shell,
-    desktop::{PopupKind, Window},
-    input::{pointer::CursorImageStatus, Seat, SeatHandler, SeatState},
-    reexports::{
-        wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode,
-        wayland_server::{
-            protocol::{wl_buffer::WlBuffer, wl_seat::WlSeat, wl_surface::WlSurface},
-            Client,
-        },
-    },
-    utils::Serial,
-    wayland::{
-        buffer::BufferHandler,
-        compositor::{
-            get_parent, is_sync_subsurface, with_states, CompositorClientState, CompositorHandler,
-            CompositorState,
-        },
-        data_device::{
-            ClientDndGrabHandler, DataDeviceHandler, DataDeviceState, ServerDndGrabHandler,
-        },
-        shell::xdg::{
-            decoration::XdgDecorationHandler, PopupSurface, PositionerState, ToplevelSurface,
-            XdgShellHandler, XdgShellState, XdgToplevelSurfaceData,
-        },
-        shm::{ShmHandler, ShmState},
-    },
 };
+use wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode;
 
 use crate::state::{ClientState, State};
 
