@@ -9,6 +9,7 @@ use self::winit::Winit;
 use crate::render::element::OutputRenderElement;
 use crate::state::{CalloopData, State};
 
+mod udev;
 mod winit;
 
 pub trait Backend {
