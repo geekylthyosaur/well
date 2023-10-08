@@ -6,7 +6,7 @@ use smithay::reexports::calloop::LoopHandle;
 use smithay::reexports::wayland_server::backend::{ClientData, ClientId, DisconnectReason};
 use smithay::reexports::wayland_server::DisplayHandle;
 use smithay::wayland::compositor::{CompositorClientState, CompositorState};
-use smithay::wayland::data_device::DataDeviceState;
+use smithay::wayland::selection::data_device::DataDeviceState;
 use smithay::wayland::shell::xdg::decoration::XdgDecorationState;
 use smithay::wayland::shell::xdg::XdgShellState;
 use smithay::wayland::shm::ShmState;

@@ -15,9 +15,10 @@ use smithay::wayland::compositor::{
     get_parent, is_sync_subsurface, with_states, CompositorClientState, CompositorHandler,
     CompositorState,
 };
-use smithay::wayland::data_device::{
+use smithay::wayland::selection::data_device::{
     ClientDndGrabHandler, DataDeviceHandler, DataDeviceState, ServerDndGrabHandler,
 };
+use smithay::wayland::selection::SelectionHandler;
 use smithay::wayland::shell::xdg::decoration::XdgDecorationHandler;
 use smithay::wayland::shell::xdg::{
     PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler, XdgShellState,
@@ -77,8 +78,11 @@ impl XdgDecorationHandler for State {
     fn unset_mode(&mut self, _toplevel: ToplevelSurface) {}
 }
 
-impl DataDeviceHandler for State {
+impl SelectionHandler for State {
     type SelectionUserData = ();
+}
+
+impl DataDeviceHandler for State {
     fn data_device_state(&self) -> &DataDeviceState {
         &self.data_device_state
     }

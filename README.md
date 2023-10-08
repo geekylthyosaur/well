@@ -9,7 +9,7 @@ Wayland compositor
 1. Install dependencies
    ```sh
    # On Fedora
-   dnf install wayland-devel libxkbcommon-devel
+   dnf install gcc wayland-devel libudev-devel libseat-devel libxkbcommon-devel libinput-devel libgbm-devel
    ```
 1. Clone this repository `git clone https://github.com/geekylthyosaur/well.git`.
 1. Build using `cargo build --release`.

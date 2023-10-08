@@ -15,6 +15,18 @@ mlua = { version = "0.9", features = ["lua54", "vendored", "serialize"] }
 serde = { version = "1.0", features = ["derive"] }
 xdg = "2.5"
 
-smithay = { default-features = false, git = "https://github.com/Smithay/smithay.git", rev = "509030a", features = [
-    "backend_winit", "desktop", "wayland_frontend"
+smithay = { default-features = false, git = "https://github.com/Smithay/smithay.git", rev = "d60b1b8", features = [
+    "backend_drm",
+    "backend_egl",
+    "backend_gbm",
+    "backend_libinput",
+    "backend_session_libseat",
+    "backend_udev",
+    "backend_winit",
+    "desktop",
+    "renderer_gl",
+    "renderer_multi",
+    "use_system_lib",
+    "wayland_frontend"
 ] }
+smithay-drm-extras = { git = "https://github.com/Smithay/smithay.git", rev = "d60b1b8" }
