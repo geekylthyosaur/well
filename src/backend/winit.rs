@@ -5,10 +5,11 @@ use smithay::backend::allocator::Fourcc;
 use smithay::backend::renderer::damage::{OutputDamageTracker, RenderOutputResult};
 use smithay::backend::renderer::gles::{GlesRenderer, GlesTexture};
 use smithay::backend::renderer::Offscreen;
-use smithay::backend::winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend};
+use smithay::backend::winit::{self, WinitEvent, WinitEventLoop, WinitGraphicsBackend};
 use smithay::output::{Mode, Output, PhysicalProperties, Subpixel};
 use smithay::reexports::calloop::timer::{TimeoutAction, Timer};
 use smithay::reexports::calloop::LoopHandle;
+use smithay::reexports::winit::platform::pump_events::PumpStatus;
 use smithay::utils::{Buffer, Size, Transform};
 
 use super::Backend;
@@ -34,7 +35,7 @@ impl Winit {
         let (mut backend, mut winit) =
             winit::init::<GlesRenderer>().expect("Failed to initialize backend");
 
-        let mode = Mode { size: backend.window_size().physical_size, refresh: 60_000 };
+        let mode = Mode { size: backend.window_size(), refresh: 60_000 };
 
         let output = Output::new(
             "winit".to_string(),
@@ -75,10 +76,10 @@ impl Winit {
                 state.shell.workspaces.change_output_mode(Mode { size, refresh: 60_000 })
             }
             WinitEvent::Input(event) => state.handle_input(event),
-            WinitEvent::Refresh => self.render(state).unwrap(),
+            WinitEvent::Redraw => self.render(state).unwrap(),
             _ => (),
         });
-        if let Err(WinitError::WindowClosed) = dispatcher {
+        if let PumpStatus::Exit(_) = dispatcher {
             state.is_running = false;
         }
     }

@@ -15,9 +15,10 @@ use smithay::wayland::compositor::{
     get_parent, is_sync_subsurface, with_states, CompositorClientState, CompositorHandler,
     CompositorState,
 };
-use smithay::wayland::data_device::{
+use smithay::wayland::selection::data_device::{
     ClientDndGrabHandler, DataDeviceHandler, DataDeviceState, ServerDndGrabHandler,
 };
+use smithay::wayland::selection::SelectionHandler;
 use smithay::wayland::shell::xdg::decoration::XdgDecorationHandler;
 use smithay::wayland::shell::xdg::{
     PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler, XdgShellState,
@@ -34,6 +35,10 @@ use crate::state::{ClientState, State};
 
 impl BufferHandler for State {
     fn buffer_destroyed(&mut self, _buffer: &WlBuffer) {}
+}
+
+impl SelectionHandler for State {
+    type SelectionUserData = ();
 }
 
 impl XdgShellHandler for State {
@@ -65,6 +70,15 @@ impl XdgShellHandler for State {
     fn toplevel_destroyed(&mut self, _surface: ToplevelSurface) {
         self.shell.workspaces.current_mut().refresh();
     }
+
+    fn reposition_request(
+        &mut self,
+        _surface: PopupSurface,
+        _positioner: PositionerState,
+        _token: u32,
+    ) {
+        // TODO
+    }
 }
 
 impl XdgDecorationHandler for State {
@@ -78,7 +92,6 @@ impl XdgDecorationHandler for State {
 }
 
 impl DataDeviceHandler for State {
-    type SelectionUserData = ();
     fn data_device_state(&self) -> &DataDeviceState {
         &self.data_device_state
     }

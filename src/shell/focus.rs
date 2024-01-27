@@ -27,8 +27,8 @@ impl State {
     }
 
     pub fn set_focus(&mut self, window: Option<Window>) {
-        let surface = window.as_ref().map(|w| w.toplevel().wl_surface().clone());
-        set_keyboard_focus(self, surface);
+        let surface = window.as_ref().map(|w| w.toplevel().wl_surface());
+        set_keyboard_focus(self, surface.cloned());
         CurrentFocus::set(&self.seat, window);
     }
 }

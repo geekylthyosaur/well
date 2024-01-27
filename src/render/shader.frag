@@ -38,11 +38,11 @@ void main() {
     float windowDistance = box(windowSize * (windowCoords - 0.5), windowSize / 2.0 + thickness, radius + thickness);
 
     if (windowDistance > 0.0) {
-        float smoothedAlpha = 1.0 - smoothstep(0.0, 1.0, windowDistance);
+        float smoothedAlpha = 1.0 - smoothstep(0.0, 1.5, windowDistance);
         mixColor = mix(vec4(0), outlineColor, smoothedAlpha);
     } else {
         vec4 windowColor = texture2D(tex, windowCoords);
-        float smoothedAlpha = 1.0 - smoothstep(0.0, 1.0, abs(windowDistance) - thickness);
+        float smoothedAlpha = 1.0 - smoothstep(0.0, 1.5, abs(windowDistance) - thickness);
         mixColor = mix(windowColor, outlineColor, smoothedAlpha);
     }
 

@@ -83,7 +83,7 @@ impl Config {
     fn reload(&mut self) {
         debug!("Reloading configuration");
         let config = Self::try_from(self.path.as_path()).unwrap();
-        let _ = std::mem::replace(self, config);
+        *self = config;
     }
 
     pub fn setup_watcher(path: &Path, event_loop: LoopHandle<'static, CalloopData>) {
