@@ -87,16 +87,14 @@ impl Winit {
 
 impl Backend for Winit {
     fn render(&mut self, state: &mut State) -> Result<()> {
-        let elements = state.shell.workspaces.render_elements(
-            self,
-            state.get_focus().as_ref(),
-            &state.config,
-        )?;
+        let focus = state.get_focus();
+        let elements =
+            state.shell.workspaces.render_elements(self, focus.as_ref(), &state.config)?;
         let backend = &mut self.backend;
         backend.bind()?;
         let age = backend.buffer_age().unwrap_or_default();
-        let res =
-            self.damage_tracker.render_output(backend.renderer(), age, &elements, CLEAR_COLOR);
+        let renderer = backend.renderer();
+        let res = self.damage_tracker.render_output(renderer, age, &elements, CLEAR_COLOR);
         if let Ok(RenderOutputResult { damage, .. }) = res {
             self.backend.submit(damage.as_deref())?;
         }

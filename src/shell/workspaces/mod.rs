@@ -47,12 +47,11 @@ impl Workspaces {
     }
 
     pub fn fullscreen(&self, window: &Window) {
-        let old_geometry = window.geometry();
+        GeometryBeforeFullscreen::set(window);
         window.toplevel().with_pending_state(|state| {
             state.size = self.output_geometry().map(|g| g.size);
         });
         IsFullscreen::set(window, true);
-        GeometryBeforeFullscreen::set(window, old_geometry);
         window.toplevel().send_pending_configure();
     }
 
@@ -128,71 +127,72 @@ impl Workspaces {
         config: &Config,
     ) -> Result<Vec<OutputRenderElement>> {
         let mut elements = vec![];
-        if let Some(output) = self.output.as_ref() {
-            let space = &self.current().space;
-            let output_scale = output.current_scale().fractional_scale();
-            let output_geometry = self.output_geometry().unwrap();
-            let output_transform = self.output_transform().unwrap();
-            let alpha = 1.0;
-            let scale = 1.0;
+        let Some(output) = self.output.as_ref() else {
+            return Ok(elements);
+        };
+        let space = &self.current().space;
+        let output_scale = output.current_scale().fractional_scale();
+        let output_geometry = self.output_geometry().unwrap();
+        let output_transform = self.output_transform().unwrap();
+        let alpha = 1.0;
+        let scale = 1.0;
 
-            for window in space.elements_for_output(output).rev() {
-                let mut geometry = space.element_geometry(window).unwrap_or_default();
+        for window in space.elements_for_output(output).rev() {
+            let mut geometry = space.element_geometry(window).unwrap_or_default();
 
-                let size = geometry.size.to_buffer(output_scale as i32, Transform::Normal);
+            let size = geometry.size.to_buffer(output_scale as i32, Transform::Normal);
 
-                if size.w == 0 || size.h == 0 {
-                    continue;
-                }
+            if size.w == 0 || size.h == 0 {
+                continue;
+            }
 
-                let window_location = (output_transform
-                    .transform_point_in(output_geometry.loc, &output_geometry.size)
-                    - output_transform.transform_point_in(geometry.loc, &geometry.size)
-                    - Point::from((
-                        output_geometry.loc.x - geometry.loc.x,
-                        geometry.loc.y - output_geometry.loc.y,
-                    ))
-                    - window.geometry().loc)
-                    .to_physical_precise_round(output_scale);
+            let window_location = (output_transform
+                .transform_point_in(output_geometry.loc, &output_geometry.size)
+                - output_transform.transform_point_in(geometry.loc, &geometry.size)
+                - Point::from((
+                    output_geometry.loc.x - geometry.loc.x,
+                    geometry.loc.y - output_geometry.loc.y,
+                ))
+                - window.geometry().loc)
+                .to_physical_precise_round(output_scale);
 
-                let popups_location =
-                    (geometry.loc - window.geometry().loc).to_physical_precise_round(output_scale);
-                let surface = window.toplevel().wl_surface();
+            let popups_location =
+                (geometry.loc - window.geometry().loc).to_physical_precise_round(output_scale);
+            let surface = window.toplevel().wl_surface();
 
-                let (window_elements, popup_elements) = split_surface_render_elements(
-                    backend.renderer(),
-                    surface,
-                    window_location,
-                    popups_location,
-                    window.geometry(),
-                    scale,
-                    alpha,
+            let (window_elements, popup_elements) = split_surface_render_elements(
+                backend.renderer(),
+                surface,
+                window_location,
+                popups_location,
+                window.geometry(),
+                scale,
+                alpha,
+            );
+
+            elements.extend(popup_elements);
+
+            if let Some(texture) = backend.render_offscreen(&window_elements, size)? {
+                let color = focus
+                    .and_then(|focus| focus.eq(window).then_some(config.outline.focused_color))
+                    .unwrap_or(config.outline.color);
+                let radius = config.outline.radius as f32;
+                let thickness = config.outline.thickness as f32;
+
+                let program = OutlineShader::program(backend.renderer());
+                let t = thickness as i32;
+                geometry.size += (t * 2, t * 2).into();
+                geometry.loc -= (t, t).into();
+                let element = RoundedElement::new(
+                    color,
+                    geometry,
+                    program,
+                    radius,
+                    texture,
+                    output_transform,
+                    thickness,
                 );
-
-                elements.extend(popup_elements);
-
-                if let Some(texture) = backend.render_offscreen(&window_elements, size)? {
-                    let color = focus
-                        .and_then(|focus| focus.eq(window).then_some(config.outline.focused_color))
-                        .unwrap_or(config.outline.color);
-                    let radius = config.outline.radius as f32;
-                    let thickness = config.outline.thickness as f32;
-
-                    let program = OutlineShader::program(backend.renderer());
-                    let t = thickness as i32;
-                    geometry.size += (t * 2, t * 2).into();
-                    geometry.loc -= (t, t).into();
-                    let element = RoundedElement::new(
-                        color,
-                        geometry,
-                        program,
-                        radius,
-                        texture,
-                        output_transform,
-                        thickness,
-                    );
-                    elements.push(OutputRenderElement::RoundedWindow(element));
-                }
+                elements.push(OutputRenderElement::RoundedWindow(element));
             }
         }
         Ok(elements)
