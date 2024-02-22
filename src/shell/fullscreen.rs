@@ -13,7 +13,9 @@ impl IsFullscreen {
 
     pub fn set(window: &Window, is: bool) {
         if !window.user_data().insert_if_missing(|| Self(is.into())) {
-            window.user_data().get::<Self>().map(|d| d.0.store(is, Ordering::Relaxed));
+            if let Some(d) = window.user_data().get::<Self>() {
+                d.0.store(is, Ordering::Relaxed);
+            }
         }
     }
 }

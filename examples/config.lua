@@ -1,5 +1,5 @@
 local super_keys = {"Alt", "Super"}
-local term_cmd = "alacritty"
+local term_cmd = "konsole"
 
 local workspace_count = 9
 

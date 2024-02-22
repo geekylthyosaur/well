@@ -21,7 +21,7 @@ impl Shell {
     // FIXME: self
     pub fn close(&mut self, window: Option<Window>) {
         if let Some(window) = window {
-            window.toplevel().send_close();
+            window.toplevel().expect("Wayland window").send_close();
         }
     }
 

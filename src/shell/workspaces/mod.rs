@@ -46,25 +46,27 @@ impl Workspaces {
         self.workspaces[new].map_window(window, Point::default(), false);
     }
 
-    pub fn fullscreen(&self, window: &Window) {
+    pub fn fullscreen(&self, window: &Window) -> Option<()> {
         GeometryBeforeFullscreen::set(window);
-        window.toplevel().with_pending_state(|state| {
+        window.toplevel()?.with_pending_state(|state| {
             state.size = self.output_geometry().map(|g| g.size);
         });
         IsFullscreen::set(window, true);
-        window.toplevel().send_pending_configure();
+        window.toplevel()?.send_pending_configure();
+        Some(())
     }
 
-    pub fn unfullscreen(&mut self, window: &Window) {
+    pub fn unfullscreen(&mut self, window: &Window) -> Option<()> {
         let old_geometry = GeometryBeforeFullscreen::get(window);
-        window.toplevel().with_pending_state(|state| {
+        window.toplevel()?.with_pending_state(|state| {
             state.size = old_geometry.map(|g| g.size);
         });
         if let Some(old_geometry) = old_geometry {
             self.current_mut().map_window(window.to_owned(), old_geometry.loc, false);
         }
         IsFullscreen::set(window, false);
-        window.toplevel().send_pending_configure();
+        window.toplevel()?.send_pending_configure();
+        Some(())
     }
 
     pub fn is_fullscreen(&self, window: &Window) -> bool {
@@ -158,7 +160,7 @@ impl Workspaces {
 
             let popups_location =
                 (geometry.loc - window.geometry().loc).to_physical_precise_round(output_scale);
-            let surface = window.toplevel().wl_surface();
+            let surface = window.toplevel().expect("Wayland window").wl_surface();
 
             let (window_elements, popup_elements) = split_surface_render_elements(
                 backend.renderer(),

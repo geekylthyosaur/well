@@ -15,6 +15,6 @@ mlua = { version = "0.9", features = ["lua54", "vendored", "serialize"] }
 serde = { version = "1.0", features = ["derive"] }
 xdg = "2.5"
 
-smithay = { default-features = false, git = "https://github.com/Smithay/smithay.git", rev = "4a1b3ea", features = [
+smithay = { default-features = false, git = "https://github.com/Smithay/smithay.git", rev = "7f9e6d51", features = [
     "backend_winit", "desktop", "wayland_frontend"
 ] }

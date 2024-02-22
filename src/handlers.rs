@@ -4,8 +4,10 @@ use smithay::backend::renderer::utils::on_commit_buffer_handler;
 use smithay::desktop::{PopupKind, Window};
 use smithay::input::pointer::CursorImageStatus;
 use smithay::input::{Seat, SeatHandler, SeatState};
+use smithay::output::Output;
 use smithay::reexports::wayland_protocols;
 use smithay::reexports::wayland_server::protocol::wl_buffer::WlBuffer;
+use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
 use smithay::reexports::wayland_server::protocol::wl_seat::WlSeat;
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::reexports::wayland_server::Client;
@@ -15,6 +17,7 @@ use smithay::wayland::compositor::{
     get_parent, is_sync_subsurface, with_states, CompositorClientState, CompositorHandler,
     CompositorState,
 };
+use smithay::wayland::output::OutputHandler;
 use smithay::wayland::selection::data_device::{
     ClientDndGrabHandler, DataDeviceHandler, DataDeviceState, ServerDndGrabHandler,
 };
@@ -47,7 +50,7 @@ impl XdgShellHandler for State {
     }
 
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
-        let window = Window::new(surface);
+        let window = Window::new_wayland_window(surface);
         self.shell.workspaces.current_mut().map_window(window.clone(), (0, 0), true);
         self.set_focus(Some(window));
     }
@@ -123,7 +126,7 @@ impl CompositorHandler for State {
                 .workspaces
                 .current()
                 .windows()
-                .find(|w| w.toplevel().wl_surface() == &root)
+                .find(|w| w.toplevel().expect("Wayland window").wl_surface() == &root)
             {
                 window.on_commit();
             }
@@ -133,7 +136,7 @@ impl CompositorHandler for State {
             .workspaces
             .current()
             .windows()
-            .find(|w| w.toplevel().wl_surface() == surface)
+            .find(|w| w.toplevel().expect("Wayland window").wl_surface() == surface)
             .cloned()
         {
             let initial_configure_sent = with_states(surface, |states| {
@@ -147,7 +150,7 @@ impl CompositorHandler for State {
             });
 
             if !initial_configure_sent {
-                window.toplevel().send_configure();
+                window.toplevel().expect("Wayland window").send_configure();
             }
         }
     }
@@ -169,6 +172,12 @@ impl SeatHandler for State {
 
     fn focus_changed(&mut self, _seat: &Seat<Self>, _focused: Option<&WlSurface>) {}
     fn cursor_image(&mut self, _seat: &Seat<Self>, _image: CursorImageStatus) {}
+}
+
+impl OutputHandler for State {
+    fn output_bound(&mut self, _output: Output, _wl_output: WlOutput) {
+        todo!()
+    }
 }
 
 delegate_xdg_shell!(State);

@@ -70,12 +70,12 @@ impl State {
                         self.shell.workspaces.current_mut().raise_window(&window, true);
                         self.set_focus(Some(window));
                         self.shell.workspaces.current().windows().for_each(|window| {
-                            window.toplevel().send_pending_configure();
+                            window.toplevel().expect("Wayland window").send_pending_configure();
                         });
                     } else {
                         self.shell.workspaces.current().windows().for_each(|window| {
                             window.set_activated(false);
-                            window.toplevel().send_pending_configure();
+                            window.toplevel().expect("Wayland window").send_pending_configure();
                         });
                         keyboard.set_focus(self, Option::<WlSurface>::None, serial);
                     }

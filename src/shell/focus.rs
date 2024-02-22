@@ -26,17 +26,18 @@ impl State {
         CurrentFocus::get(&self.seat)
     }
 
-    pub fn set_focus(&mut self, window: Option<Window>) {
-        let surface = window.as_ref().map(|w| w.toplevel().wl_surface());
-        set_keyboard_focus(self, surface.cloned());
+    pub fn set_focus(&mut self, window: Option<Window>) -> Option<()> {
+        let surface = window.as_ref()?.toplevel()?.wl_surface();
+        set_keyboard_focus(self, surface.clone());
         CurrentFocus::set(&self.seat, window);
+        Some(())
     }
 }
 
-fn set_keyboard_focus(state: &mut State, surface: Option<WlSurface>) {
+fn set_keyboard_focus(state: &mut State, surface: WlSurface) {
     let serial = SERIAL_COUNTER.next_serial();
 
     if let Some(handle) = state.seat.get_keyboard() {
-        handle.set_focus(state, surface, serial);
+        handle.set_focus(state, Some(surface), serial);
     }
 }
